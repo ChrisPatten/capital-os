@@ -122,3 +122,46 @@ class ComputeCapitalPostureOut(BaseModel):
     explanation: PostureExplanation
     correlation_id: str
     output_hash: str
+
+
+class SimulateSpendItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    spend_id: str
+    amount: Decimal
+    type: Literal["one_time", "recurring"]
+    spend_date: date | None = None
+    start_date: date | None = None
+    cadence: Literal["monthly", "weekly"] = "monthly"
+    occurrences: int = Field(default=1, ge=1)
+
+
+class SimulateSpendIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    starting_liquidity: Decimal
+    start_date: date
+    horizon_periods: int = Field(ge=1, le=120)
+    spends: list[SimulateSpendItemIn] = Field(default_factory=list)
+    correlation_id: str
+
+
+class SimulateSpendPeriodOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    period_index: int
+    period_start: date
+    period_end: date
+    one_time_total: Decimal
+    recurring_total: Decimal
+    total_spend: Decimal
+    ending_liquidity: Decimal
+
+
+class SimulateSpendOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    starting_liquidity: Decimal
+    periods: list[SimulateSpendPeriodOut]
+    correlation_id: str
+    output_hash: str

@@ -49,7 +49,7 @@ development_status:
 
   epic-2: in-progress
   2-1-simulation-engine: done
-  2-2-simulate-spend-tool-contract-and-logging: ready-for-dev
+  2-2-simulate-spend-tool-contract-and-logging: done
   2-3-simulation-performance-guardrails: ready-for-dev
   epic-2-retrospective: optional
 

@@ -14,6 +14,7 @@ from capital_os.tools import (
     create_or_update_obligation,
     record_balance_snapshot,
     record_transaction_bundle,
+    simulate_spend,
 )
 
 app = FastAPI(title="Capital OS")
@@ -23,6 +24,7 @@ TOOL_HANDLERS = {
     "record_balance_snapshot": record_balance_snapshot.handle,
     "create_or_update_obligation": create_or_update_obligation.handle,
     "compute_capital_posture": compute_capital_posture.handle,
+    "simulate_spend": simulate_spend.handle,
 }
 
 

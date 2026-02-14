@@ -13,6 +13,23 @@ Primary context sources:
 - Existing repository content is primarily BMAD workflow/configuration artifacts plus planning docs.
 - Build the Phase 1 service and tests from scratch following the constraints below.
 
+## Backlog References
+Use these files as the canonical backlog and execution queue:
+- Sprint tracker and status source of truth:
+  - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- Story implementation briefs (ready-for-dev and in-progress work):
+  - `_bmad-output/implementation-artifacts/*.md`
+- Epic planning source:
+  - `_bmad-output/planning-artifacts/epic-*.md`
+- PRD gap-closure backlog plan:
+  - `docs/backlog-phase1-prd-closure.md`
+
+Agent workflow order:
+1. Read `_bmad-output/implementation-artifacts/sprint-status.yaml` first.
+2. Pick the next story in priority order (prefer `ready-for-dev`).
+3. Execute against the corresponding story file in `_bmad-output/implementation-artifacts/`.
+4. Keep status changes synchronized back to `sprint-status.yaml`.
+
 ## Phase 1 Scope (In)
 - Account hierarchy management.
 - Balanced transaction bundle recording.

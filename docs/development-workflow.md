@@ -48,7 +48,7 @@ Current test coverage areas:
 - Security:
   - Read-only DB connection cannot mutate ledger tables.
 - Performance:
-  - p95 smoke tests for `record_transaction_bundle` and `compute_capital_posture`.
+  - p95 smoke tests for `record_transaction_bundle`, `compute_capital_posture`, and `simulate_spend`.
 
 ## Agent Backlog Workflow
 Canonical files:
@@ -65,5 +65,6 @@ Execution order for agents:
 
 ## Current Priority Queue
 From `sprint-status.yaml` on 2026-02-14:
-- Epic 1 Story `1-4-posture-performance-and-explainability`: `review`.
-- Epics 2-5 stories are `backlog`.
+- Epic 1 stories: `done`.
+- Epic 2 stories: `done`.
+- Epics 3-5 stories: `ready-for-dev`.

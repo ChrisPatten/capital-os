@@ -3,6 +3,11 @@
 Date: 2026-02-14
 Scope: Close remaining gaps between implemented ledger-core slice and full `initial_prd.md` Phase 1 outcomes.
 
+## Execution Status Snapshot (2026-02-14)
+- Epic E1 (Capital Posture): implemented.
+- Epic E2 (Spend Simulation): implemented.
+- Epics E3-E5: backlog/ready-for-dev per `_bmad-output/implementation-artifacts/sprint-status.yaml`.
+
 ## Prioritization Logic
 - Build deterministic read/computation foundation first.
 - Reuse shared posture math for simulation and debt ranking.

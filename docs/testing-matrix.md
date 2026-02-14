@@ -24,7 +24,7 @@ As of 2026-02-14. This maps PRD success criteria/FR/NFR items to current tests.
 | FR-04 | Record balance snapshots | Implemented (limited direct integration assertions) | `src/capital_os/domain/ledger/service.py`, `src/capital_os/tools/record_balance_snapshot.py` |
 | FR-05 | Track obligations | Implemented (limited direct integration assertions) | `src/capital_os/domain/ledger/service.py`, `src/capital_os/tools/create_or_update_obligation.py` |
 | FR-06 | Compute capital posture | Implemented + tested | `tests/unit/test_posture_engine.py`, `tests/integration/test_event_log_coverage.py` |
-| FR-07 | Simulate spend (non-mutating) | Not implemented | Epic 2 backlog |
+| FR-07 | Simulate spend (non-mutating) | Implemented + tested | `tests/unit/test_simulation_engine.py`, `tests/integration/test_simulation_non_mutation.py`, `tests/integration/test_tool_contract_validation.py` |
 | FR-08 | Debt optimization analysis | Not implemented | Epic 3 backlog |
 | FR-09 | Structured tool API validation | Implemented + tested | `tests/integration/test_tool_contract_validation.py` |
 | FR-10 | Tool invocation logging | Implemented + tested | `tests/integration/test_event_log_coverage.py` |

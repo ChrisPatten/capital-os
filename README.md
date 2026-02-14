@@ -4,8 +4,9 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 
 ## Current Status (2026-02-14)
 - Core ledger foundation is implemented: accounts, balanced transaction bundles, idempotency, balance snapshots, obligations, and event logging.
-- Capital posture tooling is implemented (`compute_capital_posture`) and under sprint review.
-- Epic 2+ roadmap work (simulation, debt analysis, approval-gated writes, CI hardening) remains in backlog.
+- Capital posture tooling is implemented (`compute_capital_posture`).
+- Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
+- Remaining roadmap backlog starts at Epic 3 (debt analysis, approval-gated writes, CI hardening).
 
 ## Tech Stack
 - Python 3.11+
@@ -55,6 +56,7 @@ pytest
   - `record_balance_snapshot`
   - `create_or_update_obligation`
   - `compute_capital_posture`
+  - `simulate_spend`
 
 ## Example Tool Call
 ```bash

@@ -9,11 +9,11 @@ In scope:
 - `record_transaction_bundle`.
 - `record_balance_snapshot`.
 - `create_or_update_obligation`.
+- `compute_capital_posture`.
+- `simulate_spend`.
 - Event logging, idempotency, append-only controls, and write boundaries.
 
 Out of scope in this slice:
-- Capital posture computation.
-- Spend simulation.
 - Debt analysis.
 - Approval workflow implementation.
 - UI/ingestion/orchestration layers.
@@ -28,6 +28,8 @@ Out of scope in this slice:
 - Domain Services:
   - Accounts (`src/capital_os/domain/accounts/service.py`): hierarchy rules and cycle rejection.
   - Ledger (`src/capital_os/domain/ledger/service.py`): atomic write orchestration.
+  - Posture (`src/capital_os/domain/posture/service.py`): deterministic capital posture computation.
+  - Simulation (`src/capital_os/domain/simulation/service.py`): deterministic non-mutating spend projection.
 - Domain Rules (`src/capital_os/domain/ledger/invariants.py`):
   - Balanced postings and monetary normalization checks.
 - Idempotency (`src/capital_os/domain/ledger/idempotency.py`):
@@ -128,4 +130,5 @@ Schema/migration expectations:
 - Changes to invariants, idempotency semantics, or hashing must be captured in ADRs.
 - Baseline datastore decision is captured in `docs/adr/ADR-001-sqlite-canonical-ledger-store.md`.
 - New domain capabilities (capital posture, simulation, debt analysis, approvals) should be added as separate architecture slices after this foundation is stable.
+- Remaining new domain capabilities (debt analysis and approvals) should be added as separate architecture slices after this foundation is stable.
 - Preserve strict layering: API/tools -> domain services -> repository/DB. No direct API-to-DB bypass.

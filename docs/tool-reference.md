@@ -67,6 +67,19 @@ As of 2026-02-14, the service exposes `POST /tools/{tool_name}` in `src/capital_
   - `reserve_assumptions`
 - Persists event log entries for successful calls.
 
+## `simulate_spend`
+- Handler: `src/capital_os/tools/simulate_spend.py`
+- Engine: `src/capital_os/domain/simulation/engine.py`
+- Input schema: `SimulateSpendIn`
+- Output schema: `SimulateSpendOut`
+
+### Behavior
+- Non-mutating projection tool for one-time and recurring spend scenarios.
+- Validates branch-specific fields (`one_time` requires `spend_date`, `recurring` requires `start_date`).
+- Returns deterministic period projections with normalized monetary fields.
+- Produces deterministic `output_hash` over canonical response payload.
+- Persists event log entries for successful calls.
+
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.
 - Validation failure: HTTP `422` deterministic detail payload, with event logging attempt.

@@ -1,6 +1,6 @@
 # Story 1.3: Compute Capital Posture Tool Contract
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -19,19 +19,19 @@ so that posture outputs are consistently available via the Capital OS tool API w
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add schema contract (AC: 1, 3, 4)
-  - [ ] Extend `src/capital_os/schemas/tools.py` with posture request/response models
-  - [ ] Ensure defaults and field constraints are explicit and deterministic
-- [ ] Task 2: Add tool handler (AC: 2, 4)
-  - [ ] Create `src/capital_os/tools/compute_capital_posture.py`
-  - [ ] Validate payload and delegate to posture domain service
-- [ ] Task 3: Wire API route mapping (AC: 2, 3, 5)
-  - [ ] Update `src/capital_os/api/app.py` `TOOL_HANDLERS`
-  - [ ] Ensure existing validation/error logging behavior applies unchanged
-- [ ] Task 4: Add integration and validation tests (AC: 3, 5, 6)
-  - [ ] Add/extend `tests/integration/test_tool_contract_validation.py`
-  - [ ] Add/extend `tests/integration/test_event_log_coverage.py`
-  - [ ] Add posture tool happy-path integration check
+- [x] Task 1: Add schema contract (AC: 1, 3, 4)
+  - [x] Extend `src/capital_os/schemas/tools.py` with posture request/response models
+  - [x] Ensure defaults and field constraints are explicit and deterministic
+- [x] Task 2: Add tool handler (AC: 2, 4)
+  - [x] Create `src/capital_os/tools/compute_capital_posture.py`
+  - [x] Validate payload and delegate to posture domain service
+- [x] Task 3: Wire API route mapping (AC: 2, 3, 5)
+  - [x] Update `src/capital_os/api/app.py` `TOOL_HANDLERS`
+  - [x] Ensure existing validation/error logging behavior applies unchanged
+- [x] Task 4: Add integration and validation tests (AC: 3, 5, 6)
+  - [x] Add/extend `tests/integration/test_tool_contract_validation.py`
+  - [x] Add/extend `tests/integration/test_event_log_coverage.py`
+  - [x] Add posture tool happy-path integration check
 
 ## Dev Notes
 

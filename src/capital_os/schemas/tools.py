@@ -75,3 +75,27 @@ class CreateOrUpdateObligationOut(BaseModel):
     obligation_id: str
     correlation_id: str
     output_hash: str
+
+
+class ComputeCapitalPostureIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    liquidity: Decimal
+    fixed_burn: Decimal
+    variable_burn: Decimal
+    minimum_reserve: Decimal
+    volatility_buffer: Decimal = Decimal("0.0000")
+    correlation_id: str
+
+
+class ComputeCapitalPostureOut(BaseModel):
+    fixed_burn: Decimal
+    variable_burn: Decimal
+    volatility_buffer: Decimal
+    reserve_target: Decimal
+    liquidity: Decimal
+    liquidity_surplus: Decimal
+    reserve_ratio: Decimal
+    risk_band: Literal["critical", "elevated", "guarded", "stable"]
+    correlation_id: str
+    output_hash: str

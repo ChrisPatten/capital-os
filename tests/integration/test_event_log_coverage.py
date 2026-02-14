@@ -36,3 +36,72 @@ def test_success_and_validation_failures_logged(db_available):
     assert len(rows) == 2
     assert rows[0]["status"] == "ok"
     assert rows[1]["status"] == "validation_error"
+
+
+def test_compute_posture_success_and_validation_failures_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    ok_payload = {
+        "liquidity": "50000.0000",
+        "fixed_burn": "12000.0000",
+        "variable_burn": "3500.0000",
+        "minimum_reserve": "30000.0000",
+        "volatility_buffer": "5000.0000",
+        "correlation_id": "corr-posture-1",
+    }
+    bad_payload = {"liquidity": "100.00", "correlation_id": "corr-posture-2"}
+
+    response = client.post("/tools/compute_capital_posture", json=ok_payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["correlation_id"] == "corr-posture-1"
+    assert body["risk_band"] == "guarded"
+    assert isinstance(body["output_hash"], str)
+
+    assert client.post("/tools/compute_capital_posture", json=bad_payload).status_code == 422
+
+    with transaction() as conn:
+        rows = conn.execute(
+            """
+            SELECT tool_name, correlation_id, input_hash, output_hash, event_timestamp, duration_ms, status
+            FROM event_log
+            WHERE tool_name='compute_capital_posture'
+            ORDER BY created_at
+            """
+        ).fetchall()
+    assert len(rows) == 2
+    assert rows[0]["status"] == "ok"
+    assert rows[0]["correlation_id"] == "corr-posture-1"
+    assert rows[0]["input_hash"]
+    assert rows[0]["output_hash"]
+    assert rows[0]["event_timestamp"]
+    assert rows[0]["duration_ms"] >= 0
+    assert rows[1]["status"] == "validation_error"
+    assert rows[1]["correlation_id"] == "corr-posture-2"
+    assert rows[1]["input_hash"]
+    assert rows[1]["output_hash"]
+    assert rows[1]["event_timestamp"]
+    assert rows[1]["duration_ms"] >= 0
+
+
+def test_compute_posture_output_hash_is_deterministic(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    payload = {
+        "liquidity": "50000.0000",
+        "fixed_burn": "12000.0000",
+        "variable_burn": "3500.0000",
+        "minimum_reserve": "30000.0000",
+        "volatility_buffer": "5000.0000",
+        "correlation_id": "corr-posture-stable",
+    }
+    first = client.post("/tools/compute_capital_posture", json=payload)
+    second = client.post("/tools/compute_capital_posture", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["output_hash"] == second.json()["output_hash"]

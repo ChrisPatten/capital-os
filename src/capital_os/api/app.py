@@ -9,7 +9,12 @@ from pydantic import ValidationError
 from capital_os.db.session import transaction
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
-from capital_os.tools import create_or_update_obligation, record_balance_snapshot, record_transaction_bundle
+from capital_os.tools import (
+    compute_capital_posture,
+    create_or_update_obligation,
+    record_balance_snapshot,
+    record_transaction_bundle,
+)
 
 app = FastAPI(title="Capital OS")
 
@@ -17,6 +22,7 @@ TOOL_HANDLERS = {
     "record_transaction_bundle": record_transaction_bundle.handle,
     "record_balance_snapshot": record_balance_snapshot.handle,
     "create_or_update_obligation": create_or_update_obligation.handle,
+    "compute_capital_posture": compute_capital_posture.handle,
 }
 
 

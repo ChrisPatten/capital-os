@@ -9,7 +9,7 @@ In scope:
 - `record_transaction_bundle`.
 - `record_balance_snapshot`.
 - `create_or_update_obligation`.
-- Event logging, idempotency, append-only controls, and role boundaries.
+- Event logging, idempotency, append-only controls, and write boundaries.
 
 Out of scope in this slice:
 - Capital posture computation.
@@ -43,7 +43,7 @@ Out of scope in this slice:
   - Typed env-driven settings.
 
 ## 4. Data Architecture
-Canonical store: PostgreSQL (Dockerized for dev/CI parity), pinned image `postgres:16.4-alpine`.
+Canonical store: SQLite (file-backed) with WAL mode enabled for concurrency and durability.
 
 Primary entities:
 - Accounts (typed hierarchy with parent-child and metadata).
@@ -55,7 +55,7 @@ Primary entities:
 
 Schema/migration expectations:
 - `migrations/0001_ledger_core.sql`: core tables, keys, and constraints.
-- `migrations/0002_security_and_append_only.sql`: role boundaries and append-only enforcement.
+- `migrations/0002_security_and_append_only.sql`: append-only enforcement and write-boundary controls.
 
 ## 5. Write Path (Canonical)
 1. Request enters tool endpoint.
@@ -81,8 +81,8 @@ Schema/migration expectations:
 - Exactly one canonical commit must exist for a duplicate idempotency key race.
 
 ## 8. Security and Trust Boundaries
-- Service role can mutate canonical ledger tables.
-- Non-service/agent credentials cannot directly write ledger tables.
+- Only the Capital OS service process/tool layer can mutate canonical ledger tables.
+- Non-service/agent consumers must connect with read-only SQLite mode and cannot directly write ledger tables.
 - Append-only protections reject direct `UPDATE`/`DELETE` on protected tables.
 - Production runtime policy is zero outbound network egress.
 - Event payloads must not contain secret material.
@@ -112,7 +112,7 @@ Schema/migration expectations:
 - Replay tests:
   - output hash reproducibility
 - Security tests:
-  - DB role boundary enforcement
+  - DB write-boundary enforcement (read-only connection mutation attempts fail)
 - Performance tests:
   - tool latency p95 validation
 
@@ -128,4 +128,3 @@ Schema/migration expectations:
 - Changes to invariants, idempotency semantics, or hashing must be captured in ADRs.
 - New domain capabilities (capital posture, simulation, debt analysis, approvals) should be added as separate architecture slices after this foundation is stable.
 - Preserve strict layering: API/tools -> domain services -> repository/DB. No direct API-to-DB bypass.
-

@@ -96,11 +96,11 @@ payloads return 4xx with machine-readable validation errors.
 Acceptance criteria: 100% coverage, including failed validations.  ￼
 	• FR-11 Approval gates for high-impact writes Transactions above approval_threshold_amount return proposed status and require explicit approval to 
 commit. Acceptance criteria: no ledger mutation occurs until approval tool is called; approval tool is idempotent.
-	• FR-12 Privilege boundaries Only the Capital OS service role can write ledger tables. Acceptance criteria: DB permissions prevent direct writes by 
-agent role credentials. ⸻ 7. Non-Functional Requirements (Measurable) BMAD guidance: NFRs must be measurable with explicit conditions and measurement method.  
+	• FR-12 Privilege boundaries Only the Capital OS service/tool layer can write ledger tables. Acceptance criteria: DB write boundaries (read-only connections + file permissions) prevent direct writes by 
+agent consumers. ⸻ 7. Non-Functional Requirements (Measurable) BMAD guidance: NFRs must be measurable with explicit conditions and measurement method.  
 ￼
 	• NFR-01 Determinism System shall produce identical outputs for identical stored state + config as measured by output_hash equality across replays.
-	• NFR-02 ACID System shall commit ledger writes atomically within a single Postgres transaction as verified by integration tests with forced failure 
+	• NFR-02 ACID System shall commit ledger writes atomically within a single SQLite transaction as verified by integration tests with forced failure 
 injection.
 	• NFR-03 Performance Compute/simulate/analyze tools shall respond in p95 < 300ms on reference dataset as measured by load tests in CI.
 	• NFR-04 Observability Tool invocations shall be traceable end-to-end via correlation_id as measured by 100% presence in event_log and log pipeline.

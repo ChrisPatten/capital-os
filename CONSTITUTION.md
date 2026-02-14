@@ -16,7 +16,7 @@ Capital OS exists to provide a deterministic, auditable financial truth layer fo
 - Auditability First: financial writes and tool invocations must be reconstructable and traceable.
 - Defense in Depth: invariants are enforced at service and database layers.
 - Fail Closed: write-path observability failure causes transaction rollback.
-- Least Privilege: only service-role credentials may mutate canonical ledger tables.
+- Least Privilege: only the service/tool layer may mutate canonical ledger tables; non-service consumers must use read-only DB access.
 - Explicit Contracts: tool interfaces are schema-validated JSON with stable error shapes.
 
 ## 4. Ledger Truth Invariants
@@ -63,7 +63,7 @@ Capital OS exists to provide a deterministic, auditable financial truth layer fo
   - unit (invariants and normalization)
   - integration (writes, idempotency, hierarchy, validation, append-only)
   - replay (hash reproducibility)
-  - security (role boundaries)
+  - security (write boundaries)
   - performance (p95 latency)
 - Financial correctness tests are merge-blocking.
 - Determinism regressions are merge-blocking.
@@ -89,4 +89,3 @@ Capital OS exists to provide a deterministic, auditable financial truth layer fo
 ## 12. Ratification
 - Initial ratification date: 2026-02-14.
 - This constitution is a living control document and must be kept aligned with `initial_prd.md` and `_bmad-output/implementation-artifacts/tech-spec-ledger-core-foundation-phase-1-slice.md`.
-

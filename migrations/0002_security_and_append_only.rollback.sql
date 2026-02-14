@@ -1,0 +1,6 @@
+DROP TRIGGER IF EXISTS trg_event_log_append_only_delete;
+DROP TRIGGER IF EXISTS trg_event_log_append_only_update;
+DROP TRIGGER IF EXISTS trg_ledger_postings_append_only_delete;
+DROP TRIGGER IF EXISTS trg_ledger_postings_append_only_update;
+DROP TRIGGER IF EXISTS trg_ledger_transactions_append_only_delete;
+DROP TRIGGER IF EXISTS trg_ledger_transactions_append_only_update;

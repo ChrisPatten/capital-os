@@ -6,11 +6,9 @@ status: 'ready-for-dev'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack:
   - 'Python'
-  - 'PostgreSQL (Docker)'
-  - 'Docker Compose'
+  - 'SQLite (file-backed, WAL)'
   - 'Pytest'
 files_to_modify:
-  - 'docker-compose.yml'
   - 'src/capital_os/config.py'
   - 'src/capital_os/api/app.py'
   - 'src/capital_os/db/session.py'
@@ -41,12 +39,12 @@ files_to_modify:
 code_patterns:
   - 'Confirmed Clean Slate: no pre-existing application service code in repository root'
   - 'Domain-first Python package layout: domain modules with thin tool/API boundary'
-  - 'PostgreSQL as canonical ledger state with ACID transaction boundaries'
+  - 'SQLite as canonical ledger state with ACID transaction boundaries'
   - 'Deterministic output shaping (canonical ordering, normalized hashes)'
   - 'Idempotent write contract via (source_system, external_id) uniqueness and retry-safe responses'
 test_patterns:
   - 'Pytest-based unit tests for invariant and financial math behavior'
-  - 'Integration tests against Dockerized Postgres for schema and write semantics'
+  - 'Integration tests against SQLite for schema and write semantics'
   - 'Concurrency tests for idempotency race handling'
   - 'Replay and determinism tests keyed by correlation_id/input_hash/output_hash'
   - 'Performance tests validating p95 latency targets'
@@ -64,7 +62,7 @@ We need a canonical, auditable double-entry ledger core that enforces balancing 
 
 ### Solution
 
-Build a greenfield Python service implementing ledger-core capabilities on PostgreSQL running in Docker, with strict transaction invariants and tool-layer validation.
+Build a greenfield Python service implementing ledger-core capabilities on SQLite (file-backed) running locally or in CI, with strict transaction invariants and tool-layer validation.
 
 ### Scope
 
@@ -87,7 +85,7 @@ Build a greenfield Python service implementing ledger-core capabilities on Postg
 Confirmed Clean Slate for product code: there is no existing application service implementation in the repository root yet. Existing content is BMAD workflow/configuration assets plus the PRD. Implementation will be greenfield with a domain-first Python package layout and a thin tool/API boundary.
 
 Patterns to follow:
-- PostgreSQL is the canonical ledger store and all write paths execute inside ACID transactions.
+- SQLite is the canonical ledger store and all write paths execute inside ACID transactions.
 - Financial invariants are enforced in service validation and DB constraints.
 - Tool outputs are deterministic by design via canonical ordering and normalized hashing inputs.
 - Idempotency is first-class for write tools through `(source_system, external_id)` uniqueness and deterministic retry responses.
@@ -104,7 +102,6 @@ Patterns to follow:
 
 | File | Purpose |
 | ---- | ------- |
-| `docker-compose.yml` | Local PostgreSQL runtime with pinned image and health checks. |
 | `src/capital_os/config.py` | Environment/config loading for service and DB settings. |
 | `src/capital_os/api/app.py` | Tool API bootstrap and health endpoint surface. |
 | `src/capital_os/db/session.py` | Connection/session and transaction boundary management. |
@@ -122,7 +119,7 @@ Patterns to follow:
 | `src/capital_os/observability/hashing.py` | Stable hashing utilities for inputs/outputs. |
 | `src/capital_os/schemas/tools.py` | Request/response contracts and validation schemas for ledger-core tools. |
 | `migrations/0001_ledger_core.sql` | Initial schema and constraints for ledger core entities. |
-| `migrations/0002_security_and_append_only.sql` | Role grants/revokes and append-only trigger/policy enforcement. |
+| `migrations/0002_security_and_append_only.sql` | Append-only trigger/policy enforcement and SQLite write-boundary controls. |
 | `tests/integration/*.py` | Integration coverage for schema, invariants, idempotency, logging. |
 | `tests/unit/*.py` | Fast unit checks for invariant logic and normalization behavior. |
 | `tests/perf/*.py` | Performance checks for tool latency targets. |
@@ -131,16 +128,16 @@ Patterns to follow:
 
 ### Technical Decisions
 
-- Use PostgreSQL as canonical ledger datastore.
-- Run PostgreSQL in Docker with pinned image tag `postgres:16.4-alpine` for local/dev/CI parity.
+- Use SQLite as canonical ledger datastore.
+- Use SQLite file-backed storage with WAL mode enabled for local/dev/CI parity.
 - Implement application/service logic in Python.
 - Use pytest as the baseline test runner across unit/integration/perf/replay suites.
 - Prioritize strict invariant enforcement and deterministic behavior at the ledger boundary.
 - ADR-001: Structure Python service as domain-first modules (`accounts`, `transactions`, `snapshots`) with a thin tool/API boundary.
-- ADR-002: Execute all ledger mutations inside ACID Postgres transactions.
+- ADR-002: Execute all ledger mutations inside ACID SQLite transactions.
 - ADR-003: Enforce `(source_system, external_id)` idempotency with DB uniqueness plus deterministic service responses on retries.
 - ADR-004: Enforce balancing invariants at both service validation and DB layers for defense-in-depth.
-- ADR-005: Pin Dockerized Postgres image/version for reproducible local and CI behavior.
+- ADR-005: Use a stable SQLite runtime version and deterministic PRAGMA configuration for reproducible local and CI behavior.
 - ADR-006: Tool transport/runtime is FastAPI HTTP JSON (`POST /tools/{tool_name}`) for all in-scope ledger-core tools.
 - ADR-007: Idempotency uniqueness scope is `(source_system, external_id)` with a required `source_system` input field.
 - ADR-008: Event logging is fail-closed for write tools: if event log persistence fails, the write transaction is rolled back.
@@ -225,9 +222,6 @@ Runtime/Transport:
 ### Tasks
 
 - [ ] Task 1: Establish runtime and service bootstrap
-  - File: `docker-compose.yml`
-  - Action: Define PostgreSQL service with pinned image, health check, persistent volume, and exposed local port.
-  - Notes: Use `postgres:16.4-alpine` and keep config stable for local and CI parity.
   - File: `src/capital_os/config.py`
   - Action: Implement typed configuration loader for DB URL, service env, and ledger settings (precision, idempotency scope).
   - Notes: Fail fast on missing required env vars.
@@ -246,8 +240,8 @@ Runtime/Transport:
   - Action: Create tables for accounts, transactions, postings, balance_snapshots, obligations, and event_log.
   - Notes: Include FK integrity, `NUMERIC(20,4)` constraints, and idempotency uniqueness on `(source_system, external_id)`.
   - File: `migrations/0002_security_and_append_only.sql`
-  - Action: Add append-only triggers for transaction/posting/event tables and role grants/revokes for service vs agent roles.
-  - Notes: Block UPDATE/DELETE in normal operation and deny direct writes for non-service role.
+  - Action: Add append-only triggers for transaction/posting/event tables and SQLite-compatible write-boundary controls.
+  - Notes: Block UPDATE/DELETE in normal operation and enforce read-only mode for non-service consumers.
   - File: `src/capital_os/domain/ledger/models.py`
   - Action: Add model mappings and canonical field names matching migration schema.
   - Notes: Keep naming deterministic and explicit.
@@ -325,12 +319,12 @@ Runtime/Transport:
   - Action: Validate replay from stored state + logged inputs reproduces output hash for implemented tools.
   - Notes: Start with ledger-core tools in scope.
   - File: `tests/security/test_db_role_boundaries.py`
-  - Action: Validate write access restrictions using roles created by migration.
-  - Notes: Test setup must bootstrap service and non-service DB roles in local/CI before assertions; ensure non-service credentials cannot mutate ledger tables while service role can.
+  - Action: Validate write access restrictions using SQLite read-only connections and DB file permission constraints.
+  - Notes: Ensure non-service consumers cannot mutate ledger tables while service-layer writes succeed.
 
 ### Acceptance Criteria
 
-- [ ] AC 1: Given Docker is installed and project env vars are set, when runtime is started, then PostgreSQL becomes healthy and the service health endpoint reports DB connectivity.
+- [ ] AC 1: Given DB path and project env vars are set, when runtime is started, then SQLite DB initialization succeeds and the service health endpoint reports DB connectivity.
 - [ ] AC 2: Given a clean database, when `0001_ledger_core` migration is applied, then all ledger-core tables and required constraints are created successfully.
 - [ ] AC 3: Given a rollback command on `0001_ledger_core` and `0002_security_and_append_only`, when executed after migration up, then schema and security/trigger artifacts revert cleanly without orphaned objects.
 - [ ] AC 4: Given valid payloads for all in-scope tool endpoints, when requests are submitted, then they are accepted and responses match documented schemas.
@@ -348,7 +342,7 @@ Runtime/Transport:
 - [ ] AC 16: Given event log persistence fails during a write tool operation, when the request is processed, then the ledger write is rolled back (fail-closed) and no partial mutation is committed.
 - [ ] AC 17: Given direct UPDATE/DELETE attempts on append-only ledger tables, when attempted in normal operation, then operations are rejected by DB enforcement.
 - [ ] AC 18: Given identical stored state and identical tool inputs, when the same implemented tool is re-run, then output hashing remains stable and replay reproduces the original `output_hash`.
-- [ ] AC 19: Given non-service DB credentials, when direct ledger table writes are attempted, then writes are denied by privilege boundaries while service-role writes succeed.
+- [ ] AC 19: Given non-service read-only DB connections, when direct ledger table writes are attempted, then writes are denied by write boundaries while service-layer writes succeed.
 - [ ] AC 20: Given ledger-core tool perf tests on the reference dataset, when measured in CI, then p95 latency for implemented ledger-core tools is < 300ms.
 - [ ] AC 21: Given successful tool responses, when fields are serialized for hashing, then key ordering and list ordering follow documented canonical order for deterministic `output_hash` generation.
 
@@ -356,22 +350,21 @@ Runtime/Transport:
 
 ### Dependencies
 
-- Docker runtime.
-- PostgreSQL container image.
+- SQLite runtime (bundled with Python or pinned environment version).
 - Python runtime and project dependency management.
-- PostgreSQL driver and migration execution tooling.
+- SQLite driver and migration execution tooling.
 - FastAPI runtime and schema validation stack.
 - Pytest and plugins/utilities for integration, concurrency, and performance tests.
 
 ### Testing Strategy
 
 - Unit tests for invariants and normalization logic (`sum=0`, decimal rules, canonical ordering/hashing inputs).
-- Integration tests against Dockerized PostgreSQL for account hierarchy, atomic writes, idempotency, snapshots, obligations, and event logging.
+- Integration tests against SQLite for account hierarchy, atomic writes, idempotency, snapshots, obligations, and event logging.
 - Concurrency integration tests specifically for `(source_system, external_id)` collision behavior.
 - Contract tests for tool request/response schema compliance.
 - DB enforcement tests for append-only trigger behavior and cycle rejection.
 - Replay tests to verify deterministic `output_hash` regeneration from logged inputs and persisted state.
-- Security tests for DB role boundary enforcement on canonical ledger tables.
+- Security tests for DB write-boundary enforcement on canonical ledger tables.
 - Performance harness to enforce p95 `< 300ms` for implemented ledger-core tools on the baseline dataset.
 - Manual smoke checks: start stack, run migration, call `/health`, execute one valid/one invalid `record_transaction_bundle`, inspect event log rows.
 
@@ -390,4 +383,4 @@ Runtime/Transport:
 - Secondary risk: schema churn during early implementation; mitigate by freezing naming and precision conventions before Task 4.
 - Audit-risk control: event logging is fail-closed for write operations to prevent untracked mutations.
 - This spec intentionally excludes capital posture, spend simulation, debt analysis, and approval workflow implementation; those remain future slices.
-- Role/bootstrap requirement: CI test setup must create service and non-service DB roles before security test execution.
+- Write-boundary requirement: CI test setup must validate read-only DB connections and file-permission constraints before security test execution.

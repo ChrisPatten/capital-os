@@ -1,0 +1,8 @@
+DROP TRIGGER IF EXISTS trg_prevent_account_cycle_insert;
+DROP TRIGGER IF EXISTS trg_prevent_account_cycle_update;
+DROP TABLE IF EXISTS event_log;
+DROP TABLE IF EXISTS obligations;
+DROP TABLE IF EXISTS balance_snapshots;
+DROP TABLE IF EXISTS ledger_postings;
+DROP TABLE IF EXISTS ledger_transactions;
+DROP TABLE IF EXISTS accounts;

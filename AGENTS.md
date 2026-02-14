@@ -33,7 +33,7 @@ Primary context sources:
 ## Required Stack and Runtime
 - Python service code.
 - FastAPI transport (`POST /tools/{tool_name}` + `/health`).
-- PostgreSQL in Docker (pinned image `postgres:16.4-alpine`).
+- SQLite (file-backed, WAL mode) as the canonical datastore.
 - Pytest for unit/integration/replay/security/perf tests.
 
 ## Architecture Rules
@@ -41,12 +41,12 @@ Primary context sources:
   - `src/capital_os/domain/accounts/*`
   - `src/capital_os/domain/ledger/*`
   - `src/capital_os/tools/*`
-  - `src/capital_os/observability/*`
-  - `src/capital_os/db/*`
-  - `src/capital_os/api/*`
+- `src/capital_os/observability/*`
+- `src/capital_os/db/*`
+- `src/capital_os/api/*`
 - All ledger mutations must run inside a single ACID DB transaction.
-- Canonical ledger state lives in PostgreSQL only.
-- Service role writes ledger tables; non-service roles must be denied direct writes.
+- Canonical ledger state lives in SQLite only.
+- Writes must occur only through the Capital OS service/tool layer; non-service consumers use read-only DB access.
 
 ## Hard Invariants
 - Every committed transaction bundle must satisfy `sum(postings.amount) == 0`.
@@ -122,11 +122,11 @@ At minimum, maintain coverage for:
 - integration: event-log coverage (success + failure)
 - integration: append-only guards
 - replay: output hash reproducibility
-- security: DB role boundary enforcement
+- security: DB write-boundary enforcement (read-only consumers cannot mutate canonical tables)
 - perf: p95 latency checks
 
 ## Implementation Priorities
-1. Runtime/bootstrap (`docker-compose`, config, DB session, API shell, schemas).
+1. Runtime/bootstrap (config, DB session, API shell, schemas).
 2. Core schema and DB constraints.
 3. Account hierarchy service.
 4. Transaction bundle + invariants + idempotency.
@@ -139,4 +139,3 @@ At minimum, maintain coverage for:
 - No secret material in event payloads.
 - No bypass around tool-layer validation for writes.
 - Preserve deterministic behavior over convenience refactors.
-

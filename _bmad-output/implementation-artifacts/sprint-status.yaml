@@ -47,10 +47,10 @@ development_status:
   1-4-posture-performance-and-explainability: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-simulation-engine: done
   2-2-simulate-spend-tool-contract-and-logging: done
-  2-3-simulation-performance-guardrails: ready-for-dev
+  2-3-simulation-performance-guardrails: done
   epic-2-retrospective: optional
 
   epic-3: in-progress

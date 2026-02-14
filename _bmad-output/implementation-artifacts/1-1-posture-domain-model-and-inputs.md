@@ -1,6 +1,6 @@
 # Story 1.1: Posture Domain Model and Inputs
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -23,21 +23,21 @@ so that capital posture calculations are replayable, auditable, and consistent a
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add posture domain input model and config container (AC: 1, 4)
-  - [ ] Create `src/capital_os/domain/posture/__init__.py`
-  - [ ] Create `src/capital_os/domain/posture/models.py` with typed structures for posture inputs
-  - [ ] Reuse existing normalization behavior from `src/capital_os/observability/hashing.py` and `src/capital_os/domain/ledger/invariants.py`
-- [ ] Task 2: Implement deterministic account selection (AC: 2, 3)
-  - [ ] Create `src/capital_os/domain/posture/service.py`
-  - [ ] Add deterministic ordering and validation rules for included accounts
-  - [ ] Ensure selection logic is read-only and does not mutate canonical tables
-- [ ] Task 3: Add repository read helpers for posture inputs (AC: 1, 2, 3)
-  - [ ] Extend `src/capital_os/domain/ledger/repository.py` with read queries needed by posture input selection
-  - [ ] Keep query ordering deterministic and explicit
-- [ ] Task 4: Add tests for boundaries and determinism (AC: 2, 3, 5, 6)
-  - [ ] Add `tests/unit/test_posture_inputs.py`
-  - [ ] Add/extend integration coverage for account selection against realistic account hierarchies
-  - [ ] Verify full suite passes and no regression in existing tests
+- [x] Task 1: Add posture domain input model and config container (AC: 1, 4)
+  - [x] Create `src/capital_os/domain/posture/__init__.py`
+  - [x] Create `src/capital_os/domain/posture/models.py` with typed structures for posture inputs
+  - [x] Reuse existing normalization behavior from `src/capital_os/observability/hashing.py` and `src/capital_os/domain/ledger/invariants.py`
+- [x] Task 2: Implement deterministic account selection (AC: 2, 3)
+  - [x] Create `src/capital_os/domain/posture/service.py`
+  - [x] Add deterministic ordering and validation rules for included accounts
+  - [x] Ensure selection logic is read-only and does not mutate canonical tables
+- [x] Task 3: Add repository read helpers for posture inputs (AC: 1, 2, 3)
+  - [x] Extend `src/capital_os/domain/ledger/repository.py` with read queries needed by posture input selection
+  - [x] Keep query ordering deterministic and explicit
+- [x] Task 4: Add tests for boundaries and determinism (AC: 2, 3, 5, 6)
+  - [x] Add `tests/unit/test_posture_inputs.py`
+  - [x] Add/extend integration coverage for account selection against realistic account hierarchies
+  - [x] Verify full suite passes and no regression in existing tests
 
 ## Dev Notes
 
@@ -130,11 +130,62 @@ GPT-5 Codex
 ### Debug Log References
 
 - Create-story workflow executed in YOLO mode per SM activation rule.
+- Added posture input domain models with deterministic timestamp and money normalization.
+- Implemented read-only deterministic account selection for liquidity inputs.
+- Added repository helper for deterministic account lookup by IDs.
+- Added posture unit/integration tests and ran full pytest suite.
+- Code review auto-fix pass: expanded disallowed account-type boundary tests and added byte-stable determinism assertion.
+
+### Implementation Plan
+
+- Model posture input selection with explicit liquidity account set, burn window, reserve policy, and USD scope.
+- Enforce deterministic ordering and validation in a posture domain service with read-only DB access.
+- Extend ledger repository with deterministic read helper queries for selected accounts.
+- Add unit and integration tests covering normalization, deterministic ordering, and invalid account selection cases.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Completed Story 1.1 implementation for deterministic posture input modeling and account selection.
+- Added duplicate, unknown-account, and disallowed-type validation paths for liquidity account selection.
+- Verified deterministic ordering by `code, account_id` across selection responses.
+- Executed full regression suite successfully (`21 passed`).
+- Addressed review findings: account-type boundary coverage expanded across non-liquidity account types.
+- Addressed review findings: repeated-run byte-stable posture input output assertion added.
+- Re-ran full regression suite after review fixes (`25 passed`).
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/1-1-posture-domain-model-and-inputs.md`
+- `src/capital_os/domain/ledger/repository.py`
+- `src/capital_os/domain/posture/__init__.py`
+- `src/capital_os/domain/posture/models.py`
+- `src/capital_os/domain/posture/service.py`
+- `tests/integration/test_posture_account_selection.py`
+- `tests/unit/test_posture_inputs.py`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+## Change Log
+
+- 2026-02-14: Implemented posture domain input models, deterministic read-only account selection, repository read helpers, and posture test coverage.
+- 2026-02-14: Senior code review fixes applied (determinism assertion + account-type boundary test expansion); status set to done.
+
+## Senior Developer Review (AI)
+
+### Review Date
+
+2026-02-14
+
+### Reviewer
+
+GPT-5 Codex (Senior Developer Review Workflow)
+
+### Outcome
+
+Approve
+
+### Findings and Resolution
+
+- [x] [HIGH] Expand account-type boundary coverage beyond `income` in posture selection integration tests (`tests/integration/test_posture_account_selection.py`).
+- [x] [MEDIUM] Add explicit byte-stable determinism assertion for same state/config repeated posture selection output (`tests/integration/test_posture_account_selection.py`).
+- [x] [MEDIUM] Align story File List with actual changed files by including sprint tracker update (`_bmad-output/implementation-artifacts/sprint-status.yaml`).

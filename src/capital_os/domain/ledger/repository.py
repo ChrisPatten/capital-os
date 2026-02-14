@@ -218,3 +218,20 @@ def list_accounts_subtree(conn, root_account_id: str | None = None) -> list[dict
             entry["metadata"] = json.loads(entry["metadata"])
         result.append(entry)
     return result
+
+
+def fetch_accounts_for_ids(conn, account_ids: list[str]) -> list[dict[str, Any]]:
+    if not account_ids:
+        return []
+
+    placeholders = ",".join("?" for _ in account_ids)
+    rows = conn.execute(
+        f"""
+        SELECT account_id, code, name, account_type
+        FROM accounts
+        WHERE account_id IN ({placeholders})
+        ORDER BY code, account_id
+        """,
+        tuple(account_ids),
+    ).fetchall()
+    return [dict(row) for row in rows]

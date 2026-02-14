@@ -1,6 +1,6 @@
 # Story 1.2: Deterministic Posture Engine
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -27,19 +27,19 @@ so that posture metrics are reproducible and safe for automated decisioning.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement posture computation service (AC: 1, 2, 4)
-  - [ ] Add `src/capital_os/domain/posture/engine.py` for deterministic metric computation
-  - [ ] Keep formulas explicit and independently testable
-  - [ ] Ensure clear handling of zero/near-zero denominator cases
-- [ ] Task 2: Enforce deterministic output shaping (AC: 2, 3)
-  - [ ] Normalize decimals and ordering before hashing/output
-  - [ ] Reuse existing canonical hashing utilities where possible
-- [ ] Task 3: Add unit test coverage for formulas (AC: 5)
-  - [ ] Create `tests/unit/test_posture_engine.py`
-  - [ ] Cover normal cases, boundaries, and invalid input handling
-- [ ] Task 4: Add replay determinism checks (AC: 6)
-  - [ ] Extend `tests/replay/test_output_replay.py` for posture engine outputs
-  - [ ] Verify repeated runs produce identical hash for seeded state
+- [x] Task 1: Implement posture computation service (AC: 1, 2, 4)
+  - [x] Add `src/capital_os/domain/posture/engine.py` for deterministic metric computation
+  - [x] Keep formulas explicit and independently testable
+  - [x] Ensure clear handling of zero/near-zero denominator cases
+- [x] Task 2: Enforce deterministic output shaping (AC: 2, 3)
+  - [x] Normalize decimals and ordering before hashing/output
+  - [x] Reuse existing canonical hashing utilities where possible
+- [x] Task 3: Add unit test coverage for formulas (AC: 5)
+  - [x] Create `tests/unit/test_posture_engine.py`
+  - [x] Cover normal cases, boundaries, and invalid input handling
+- [x] Task 4: Add replay determinism checks (AC: 6)
+  - [x] Extend `tests/replay/test_output_replay.py` for posture engine outputs
+  - [x] Verify repeated runs produce identical hash for seeded state
 
 ## Dev Notes
 
@@ -102,11 +102,64 @@ GPT-5 Codex
 ### Debug Log References
 
 - Create-story workflow executed in YOLO mode per SM activation rule.
+- `pytest -q tests/unit/test_posture_engine.py tests/replay/test_output_replay.py`
+- `pytest -q`
+- `pytest -q tests/unit/test_posture_engine.py tests/replay/test_output_replay.py`
+- `pytest -q`
+
+### Implementation Plan
+
+- Add a deterministic posture engine model with explicit FR-06 formulas and risk-band thresholding.
+- Normalize all numeric outputs to `NUMERIC(20,4)` semantics using existing round-half-even normalization helper.
+- Produce hash-stable output via canonical payload hashing.
+- Add dedicated unit tests for formula correctness/boundaries and replay tests for stable output hash.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented `PostureComputationInputs` and `PostureMetrics` in a new domain posture engine.
+- Added explicit FR-06 formula computation for reserve target, liquidity surplus, reserve ratio, and deterministic risk band.
+- Added zero-denominator handling for reserve ratio to avoid division instability.
+- Added deterministic output helper returning `output_hash` derived from canonical serialization.
+- Added posture engine unit tests covering normal calculations, round-half-even normalization, ratio boundaries, and zero reserve target handling.
+- Extended replay suite with repeated-run hash reproducibility assertions for posture engine output.
+- Full regression suite passed (`34 passed`).
+- Senior review auto-fix pass applied: deterministic serialized output payload enforced for `compute_posture_metrics_with_hash`.
+- Senior review auto-fix pass applied: added invalid-input tests, risk-threshold boundary tests, and near-zero reserve-target determinism tests.
+- Full regression suite passed after review fixes (`40 passed`).
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/1-2-deterministic-posture-engine.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/capital_os/domain/posture/__init__.py`
+- `src/capital_os/domain/posture/engine.py`
+- `tests/replay/test_output_replay.py`
+- `tests/unit/test_posture_engine.py`
+
+## Change Log
+
+- 2026-02-14: Implemented deterministic posture engine formulas and risk-band derivation with explicit zero-denominator behavior.
+- 2026-02-14: Added posture engine unit tests plus replay hash determinism checks and validated full test suite.
+- 2026-02-14: Senior code review fixes applied for deterministic output serialization and expanded formula/input boundary test coverage.
+
+## Senior Developer Review (AI)
+
+### Review Date
+
+2026-02-14
+
+### Reviewer
+
+GPT-5 Codex (Senior Developer Review Workflow)
+
+### Outcome
+
+Approve
+
+### Findings and Resolution
+
+- [x] [HIGH] Added invalid input coverage for negative burn/reserve values (`tests/unit/test_posture_engine.py`).
+- [x] [HIGH] Enforced deterministic serialized output shape in `compute_posture_metrics_with_hash` (`src/capital_os/domain/posture/engine.py`).
+- [x] [MEDIUM] Added risk-band threshold edge tests for `0.5000` and `1.0000` (`tests/unit/test_posture_engine.py`).
+- [x] [MEDIUM] Added near-zero reserve-target determinism tests (`tests/unit/test_posture_engine.py`).

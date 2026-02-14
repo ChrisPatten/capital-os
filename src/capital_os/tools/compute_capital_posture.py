@@ -32,6 +32,18 @@ def handle(payload: dict) -> ComputeCapitalPostureOut:
         "liquidity_surplus": f"{metrics.liquidity_surplus:.4f}",
         "reserve_ratio": f"{metrics.reserve_ratio:.4f}",
         "risk_band": metrics.risk_band,
+        "explanation": {
+            "contributing_balances": [
+                {"name": "liquidity", "amount": f"{metrics.liquidity:.4f}"},
+                {"name": "fixed_burn", "amount": f"{metrics.fixed_burn:.4f}"},
+                {"name": "variable_burn", "amount": f"{metrics.variable_burn:.4f}"},
+            ],
+            "reserve_assumptions": {
+                "minimum_reserve": f"{req.minimum_reserve:.4f}",
+                "volatility_buffer": f"{metrics.volatility_buffer:.4f}",
+                "reserve_target": f"{metrics.reserve_target:.4f}",
+            },
+        },
         "correlation_id": req.correlation_id,
     }
     response_payload["output_hash"] = payload_hash(response_payload)

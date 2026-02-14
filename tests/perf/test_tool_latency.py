@@ -1,11 +1,13 @@
 import statistics
 import time
+from decimal import Decimal
 
 import pytest
 
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_transaction_bundle
+from capital_os.tools.compute_capital_posture import handle as compute_capital_posture
 
 
 @pytest.mark.performance
@@ -34,6 +36,28 @@ def test_record_transaction_bundle_p95_under_300ms_smoke(db_available):
             }
         )
         timings.append((time.perf_counter() - start) * 1000)
+
+    p95 = statistics.quantiles(timings, n=20)[-1]
+    assert p95 < 300
+
+
+@pytest.mark.performance
+def test_compute_capital_posture_p95_under_300ms_reference_profile():
+    timings = []
+    payload = {
+        "liquidity": "5000000.0000",
+        "fixed_burn": "120000.0000",
+        "variable_burn": "35000.0000",
+        "minimum_reserve": "4200000.0000",
+        "volatility_buffer": "250000.0000",
+        "correlation_id": "corr-posture-perf",
+    }
+
+    for _ in range(50):
+        start = time.perf_counter()
+        response = compute_capital_posture(payload)
+        timings.append((time.perf_counter() - start) * 1000)
+        assert response.explanation.reserve_assumptions.reserve_target == Decimal("4450000.0000")
 
     p95 = statistics.quantiles(timings, n=20)[-1]
     assert p95 < 300

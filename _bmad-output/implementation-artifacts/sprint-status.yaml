@@ -43,8 +43,8 @@ development_status:
   epic-1: in-progress
   1-1-posture-domain-model-and-inputs: done
   1-2-deterministic-posture-engine: done
-  1-3-compute-capital-posture-tool-contract: ready-for-dev
-  1-4-posture-performance-and-explainability: ready-for-dev
+  1-3-compute-capital-posture-tool-contract: done
+  1-4-posture-performance-and-explainability: review
   epic-1-retrospective: optional
 
   epic-2: backlog

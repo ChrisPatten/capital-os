@@ -48,3 +48,5 @@ def test_posture_engine_output_hash_reproducible_for_same_input():
 
     assert first["output_hash"] == second["output_hash"]
     assert first == second
+    assert list(first["explanation"].keys()) == ["contributing_balances", "reserve_assumptions"]
+    assert first["explanation"]["contributing_balances"][0]["name"] == "liquidity"

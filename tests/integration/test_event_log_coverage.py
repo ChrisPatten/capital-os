@@ -58,6 +58,7 @@ def test_compute_posture_success_and_validation_failures_logged(db_available):
     body = response.json()
     assert body["correlation_id"] == "corr-posture-1"
     assert body["risk_band"] == "guarded"
+    assert list(body["explanation"].keys()) == ["contributing_balances", "reserve_assumptions"]
     assert isinstance(body["output_hash"], str)
 
     assert client.post("/tools/compute_capital_posture", json=bad_payload).status_code == 422

@@ -88,6 +88,28 @@ class ComputeCapitalPostureIn(BaseModel):
     correlation_id: str
 
 
+class PostureContributingBalance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Literal["liquidity", "fixed_burn", "variable_burn"]
+    amount: Decimal
+
+
+class PostureReserveAssumptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    minimum_reserve: Decimal
+    volatility_buffer: Decimal
+    reserve_target: Decimal
+
+
+class PostureExplanation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contributing_balances: list[PostureContributingBalance] = Field(min_length=3, max_length=3)
+    reserve_assumptions: PostureReserveAssumptions
+
+
 class ComputeCapitalPostureOut(BaseModel):
     fixed_burn: Decimal
     variable_burn: Decimal
@@ -97,5 +119,6 @@ class ComputeCapitalPostureOut(BaseModel):
     liquidity_surplus: Decimal
     reserve_ratio: Decimal
     risk_band: Literal["critical", "elevated", "guarded", "stable"]
+    explanation: PostureExplanation
     correlation_id: str
     output_hash: str

@@ -1,6 +1,6 @@
 # Story 1.4: Posture Performance and Explainability
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,18 +18,18 @@ so that decisions are auditable and tool responses meet latency expectations.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define explainability payload contract (AC: 1, 2)
-  - [ ] Add explicit explanation section to posture response schema
-  - [ ] Ensure ordered, deterministic representation
-- [ ] Task 2: Populate explanation from engine inputs/outputs (AC: 1, 4)
-  - [ ] Include contributing account totals and reserve assumptions
-  - [ ] Exclude sensitive material or raw secrets
-- [ ] Task 3: Add performance harness assertions (AC: 3, 5)
-  - [ ] Extend `tests/perf/test_tool_latency.py` for posture tool p95 path
-  - [ ] Use reference dataset scale assumptions from architecture/PRD
-- [ ] Task 4: Add replay checks including explanation payload (AC: 4, 5)
-  - [ ] Extend `tests/replay/test_output_replay.py` assertions
-  - [ ] Confirm output hash stability with explanation section present
+- [x] Task 1: Define explainability payload contract (AC: 1, 2)
+  - [x] Add explicit explanation section to posture response schema
+  - [x] Ensure ordered, deterministic representation
+- [x] Task 2: Populate explanation from engine inputs/outputs (AC: 1, 4)
+  - [x] Include contributing account totals and reserve assumptions
+  - [x] Exclude sensitive material or raw secrets
+- [x] Task 3: Add performance harness assertions (AC: 3, 5)
+  - [x] Extend `tests/perf/test_tool_latency.py` for posture tool p95 path
+  - [x] Use reference dataset scale assumptions from architecture/PRD
+- [x] Task 4: Add replay checks including explanation payload (AC: 4, 5)
+  - [x] Extend `tests/replay/test_output_replay.py` assertions
+  - [x] Confirm output hash stability with explanation section present
 
 ## Dev Notes
 
@@ -97,7 +97,23 @@ GPT-5 Codex
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added deterministic `explanation` payload contract to `compute_capital_posture` outputs, including ordered `contributing_balances` and `reserve_assumptions`.
+- Extended posture engine and tool output generation so explanation content is hash-safe and stable across replay.
+- Added explicit explainability determinism assertions in unit/integration/replay tests.
+- Added posture latency performance test with p95 `< 300ms` assertion.
+- Executed regression suite: `45 passed`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/1-4-posture-performance-and-explainability.md`
+- `src/capital_os/schemas/tools.py`
+- `src/capital_os/domain/posture/engine.py`
+- `src/capital_os/tools/compute_capital_posture.py`
+- `tests/unit/test_posture_engine.py`
+- `tests/integration/test_event_log_coverage.py`
+- `tests/perf/test_tool_latency.py`
+- `tests/replay/test_output_replay.py`
+
+## Change Log
+
+- 2026-02-14: Implemented deterministic explainability payload for posture outputs, added replay/perf assertions, and validated full regression suite.

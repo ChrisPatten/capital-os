@@ -151,10 +151,38 @@ def test_posture_engine_hash_output_is_serialized_deterministically():
         "liquidity_surplus",
         "reserve_ratio",
         "risk_band",
+        "explanation",
         "output_hash",
     ]
     assert output["fixed_burn"] == "3500.0000"
     assert output["reserve_ratio"] == "1.5652"
+    assert list(output["explanation"].keys()) == ["contributing_balances", "reserve_assumptions"]
+    assert [item["name"] for item in output["explanation"]["contributing_balances"]] == [
+        "liquidity",
+        "fixed_burn",
+        "variable_burn",
+    ]
+    assert list(output["explanation"]["reserve_assumptions"].keys()) == [
+        "minimum_reserve",
+        "volatility_buffer",
+        "reserve_target",
+    ]
+
+
+def test_posture_engine_explanation_payload_has_no_secret_fields():
+    inputs = PostureComputationInputs(
+        liquidity=Decimal("18000"),
+        fixed_burn=Decimal("3500"),
+        variable_burn=Decimal("1200"),
+        minimum_reserve=Decimal("10000"),
+        volatility_buffer=Decimal("1500"),
+    )
+
+    output = compute_posture_metrics_with_hash(inputs)
+    serialized = str(output["explanation"]).lower()
+    assert "secret" not in serialized
+    assert "token" not in serialized
+    assert "password" not in serialized
 
 
 def test_posture_engine_rejects_negative_burn_and_reserve_inputs():

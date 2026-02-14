@@ -126,5 +126,6 @@ Schema/migration expectations:
 
 ## 13. Evolution Rules
 - Changes to invariants, idempotency semantics, or hashing must be captured in ADRs.
+- Baseline datastore decision is captured in `docs/adr/ADR-001-sqlite-canonical-ledger-store.md`.
 - New domain capabilities (capital posture, simulation, debt analysis, approvals) should be added as separate architecture slices after this foundation is stable.
 - Preserve strict layering: API/tools -> domain services -> repository/DB. No direct API-to-DB bypass.

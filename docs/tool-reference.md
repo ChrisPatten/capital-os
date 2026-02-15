@@ -23,9 +23,11 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Uses idempotency key `(source_system, external_id)`.
 - Writes transaction + postings in one DB transaction.
 - Persists canonical response payload and output hash for replay.
+- Enforces approval policy threshold for high-impact transactions.
 - Returns:
   - `status = "committed"` on first commit.
   - `status = "idempotent-replay"` on duplicate key replay.
+  - `status = "proposed"` for above-threshold requests (no ledger mutation).
 
 ## `record_balance_snapshot`
 - Handler: `src/capital_os/tools/record_balance_snapshot.py`
@@ -97,6 +99,29 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Rejects secret-like liability identifiers and forbids unknown payload keys.
 - Produces deterministic `output_hash` over canonical response payload.
 - Persists event log entries for successful calls.
+
+## `approve_proposed_transaction`
+- Handler: `src/capital_os/tools/approve_proposed_transaction.py`
+- Domain service: `src/capital_os/domain/approval/service.py::approve_proposed_transaction`
+- Input schema: `ApproveProposedTransactionIn`
+- Output schema: `ApproveProposedTransactionOut`
+
+### Behavior
+- Approves previously proposed `record_transaction_bundle` requests.
+- Commits exactly one canonical transaction under concurrent duplicate approval attempts.
+- Returns deterministic replay-safe canonical result for duplicate retries.
+- Logs success and validation failures.
+
+## `reject_proposed_transaction`
+- Handler: `src/capital_os/tools/reject_proposed_transaction.py`
+- Domain service: `src/capital_os/domain/approval/service.py::reject_proposed_transaction`
+- Input schema: `RejectProposedTransactionIn`
+- Output schema: `RejectProposedTransactionOut`
+
+### Behavior
+- Rejects previously proposed `record_transaction_bundle` requests without mutating ledger transactions/postings.
+- Supports deterministic idempotent replay behavior on duplicate reject attempts.
+- Logs success and validation failures.
 
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.

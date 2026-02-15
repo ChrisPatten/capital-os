@@ -1,6 +1,6 @@
 # Story 4.3: Approval Transactionality and Audit
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,15 +17,15 @@ so that auditability remains fail-closed under concurrency and replay.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Enforce transactional write+log coupling (AC: 1, 2)
-  - [ ] Ensure event insert occurs in same DB transaction as approval write.
-  - [ ] Roll back canonical write on event log persistence failure.
-- [ ] Task 2: Harden concurrency behavior (AC: 3, 4)
-  - [ ] Add deterministic conflict handling for replay/duplicate approvals.
-  - [ ] Verify exactly-one canonical commit semantics under race conditions.
-- [ ] Task 3: Add integration/security tests (AC: 2, 3, 4)
-  - [ ] Extend event log failure rollback tests.
-  - [ ] Extend concurrency and append-only guard tests.
+- [x] Task 1: Enforce transactional write+log coupling (AC: 1, 2)
+  - [x] Ensure event insert occurs in same DB transaction as approval write.
+  - [x] Roll back canonical write on event log persistence failure.
+- [x] Task 2: Harden concurrency behavior (AC: 3, 4)
+  - [x] Add deterministic conflict handling for replay/duplicate approvals.
+  - [x] Verify exactly-one canonical commit semantics under race conditions.
+- [x] Task 3: Add integration/security tests (AC: 2, 3, 4)
+  - [x] Extend event log failure rollback tests.
+  - [x] Extend concurrency and append-only guard tests.
 
 ## Dev Notes
 
@@ -54,7 +54,7 @@ so that auditability remains fail-closed under concurrency and replay.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -62,8 +62,15 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Approval commit and event logging execute in one transaction boundary.
+- Added failure-injection integration test demonstrating fail-closed rollback when approval-event persistence fails.
+- Added append-only protections for `approval_decisions` and delete protection for `approval_proposals`.
+- Verified deterministic replay and exactly-one commit semantics under concurrent duplicate approvals.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/4-3-approval-transactionality-and-audit.md`
+- `src/capital_os/domain/approval/service.py`
+- `migrations/0003_approval_gates.sql`
+- `migrations/0003_approval_gates.rollback.sql`
+- `tests/integration/test_approval_workflow.py`
+- `tests/integration/test_event_log_coverage.py`

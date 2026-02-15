@@ -59,10 +59,10 @@ development_status:
   3-3-debt-scenario-explainability: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
-  4-1-approval-policy-and-schema: ready-for-dev
-  4-2-proposal-and-approval-tools: ready-for-dev
-  4-3-approval-transactionality-and-audit: ready-for-dev
+  epic-4: done
+  4-1-approval-policy-and-schema: done
+  4-2-proposal-and-approval-tools: done
+  4-3-approval-transactionality-and-audit: done
   epic-4-retrospective: optional
 
   epic-5: in-progress

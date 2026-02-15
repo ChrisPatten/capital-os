@@ -10,6 +10,7 @@ class Settings:
     app_env: str
     db_url: str
     money_precision: int = 4
+    approval_threshold_amount: str = "1000.0000"
 
 
 @lru_cache(maxsize=1)
@@ -18,4 +19,8 @@ def get_settings() -> Settings:
     if not db_url:
         db_url = "sqlite:///./data/capital_os.db"
 
-    return Settings(app_env=os.getenv("APP_ENV", "dev"), db_url=db_url)
+    return Settings(
+        app_env=os.getenv("APP_ENV", "dev"),
+        db_url=db_url,
+        approval_threshold_amount=os.getenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000"),
+    )

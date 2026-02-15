@@ -10,7 +10,7 @@ As of 2026-02-15. This maps PRD success criteria/FR/NFR items to current tests.
 | SC-02 Deterministic outputs | Partial | `tests/replay/test_output_replay.py`, `tests/unit/test_hashing.py`, `tests/unit/test_posture_engine.py` |
 | SC-03 Tool trace completeness | Partial | `tests/integration/test_event_log_coverage.py` |
 | SC-04 Replayability | Partial | `tests/replay/test_output_replay.py` |
-| SC-05 Approval enforcement | Not implemented | No approval-gate tests yet (Epic 4 backlog) |
+| SC-05 Approval enforcement | Implemented + tested | `tests/integration/test_approval_workflow.py`, `tests/integration/test_event_log_coverage.py` |
 | SC-06 Zero external egress | Not covered by tests | No runtime egress-deny test currently |
 | SC-07 p95 latency <300ms | Partial (smoke) | `tests/perf/test_tool_latency.py` |
 
@@ -28,7 +28,7 @@ As of 2026-02-15. This maps PRD success criteria/FR/NFR items to current tests.
 | FR-08 | Debt optimization analysis | Implemented + tested | `tests/unit/test_debt_engine.py`, `tests/integration/test_analyze_debt_tool.py`, `tests/replay/test_output_replay.py` |
 | FR-09 | Structured tool API validation | Implemented + tested | `tests/integration/test_tool_contract_validation.py` |
 | FR-10 | Tool invocation logging | Implemented + tested | `tests/integration/test_event_log_coverage.py` |
-| FR-11 | Approval gates for high-impact writes | Not implemented | Epic 4 backlog |
+| FR-11 | Approval gates for high-impact writes | Implemented + tested | `tests/integration/test_approval_workflow.py`, `tests/integration/test_event_log_coverage.py`, `src/capital_os/domain/approval/service.py` |
 | FR-12 | Privilege boundaries | Implemented + tested | `tests/security/test_db_role_boundaries.py` |
 
 ## Non-Functional Requirement Coverage

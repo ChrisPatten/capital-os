@@ -7,7 +7,8 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Capital posture tooling is implemented (`compute_capital_posture`).
 - Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
 - Debt analysis tooling is implemented (`analyze_debt`) with deterministic ranking, explainability payloads, and sensitivity branch support.
-- Remaining roadmap backlog starts at Epic 4 (approval-gated writes, CI hardening).
+- Approval-gated write workflow is implemented (`record_transaction_bundle` proposal path + approve/reject tools).
+- Remaining roadmap backlog starts at Epic 5 (CI hardening and expanded DoD coverage).
 
 ## Tech Stack
 - Python 3.11+
@@ -59,6 +60,8 @@ pytest
   - `compute_capital_posture`
   - `simulate_spend`
   - `analyze_debt`
+  - `approve_proposed_transaction`
+  - `reject_proposed_transaction`
 
 ## Example Tool Call
 ```bash

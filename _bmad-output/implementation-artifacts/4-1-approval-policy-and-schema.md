@@ -1,6 +1,6 @@
 # Story 4.1: Approval Policy and Schema
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,17 +17,17 @@ so that high-impact writes are gated before ledger mutation.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add approval policy config and domain model (AC: 1, 2)
-  - [ ] Introduce approval policy representation and load path.
-  - [ ] Add proposal lifecycle domain states.
-- [ ] Task 2: Implement threshold gating behavior (AC: 1, 3)
-  - [ ] Route above-threshold writes to proposal path.
-  - [ ] Return deterministic proposed response without ledger mutation.
-- [ ] Task 3: Add schema updates (AC: 2, 3)
-  - [ ] Extend tool schemas for proposal status and metadata.
-- [ ] Task 4: Add integration tests (AC: 4)
-  - [ ] Assert above-threshold produces proposal only.
-  - [ ] Assert canonical tables unchanged for proposed-only outcome.
+- [x] Task 1: Add approval policy config and domain model (AC: 1, 2)
+  - [x] Introduce approval policy representation and load path.
+  - [x] Add proposal lifecycle domain states.
+- [x] Task 2: Implement threshold gating behavior (AC: 1, 3)
+  - [x] Route above-threshold writes to proposal path.
+  - [x] Return deterministic proposed response without ledger mutation.
+- [x] Task 3: Add schema updates (AC: 2, 3)
+  - [x] Extend tool schemas for proposal status and metadata.
+- [x] Task 4: Add integration tests (AC: 4)
+  - [x] Assert above-threshold produces proposal only.
+  - [x] Assert canonical tables unchanged for proposed-only outcome.
 
 ## Dev Notes
 
@@ -56,7 +56,7 @@ so that high-impact writes are gated before ledger mutation.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -64,8 +64,19 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added configurable approval threshold via `CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT` and domain policy loader.
+- Added proposal lifecycle persistence schema (`approval_proposals`, `approval_decisions`) and migration wiring.
+- Implemented deterministic proposal response path in `record_transaction_bundle` with no ledger mutation.
+- Added integration coverage for above-threshold proposal-only behavior and non-mutation assertions.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/4-1-approval-policy-and-schema.md`
+- `src/capital_os/config.py`
+- `src/capital_os/domain/approval/policy.py`
+- `src/capital_os/domain/approval/repository.py`
+- `src/capital_os/domain/ledger/service.py`
+- `src/capital_os/schemas/tools.py`
+- `migrations/0003_approval_gates.sql`
+- `migrations/0003_approval_gates.rollback.sql`
+- `tests/conftest.py`
+- `tests/integration/test_approval_workflow.py`

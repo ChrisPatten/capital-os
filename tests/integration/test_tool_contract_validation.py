@@ -49,3 +49,35 @@ def test_simulate_spend_invalid_payload_returns_deterministic_error_shape(db_ava
     assert detail["error"] == "validation_error"
     assert isinstance(detail["details"], list)
     assert detail["details"][0]["type"] == "missing"
+
+
+def test_approve_proposed_transaction_invalid_payload_returns_deterministic_error_shape(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    response = client.post(
+        "/tools/approve_proposed_transaction",
+        json={"correlation_id": "corr"},
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "validation_error"
+    assert isinstance(detail["details"], list)
+    assert detail["details"][0]["type"] == "missing"
+
+
+def test_reject_proposed_transaction_invalid_payload_returns_deterministic_error_shape(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    response = client.post(
+        "/tools/reject_proposed_transaction",
+        json={"correlation_id": "corr"},
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "validation_error"
+    assert isinstance(detail["details"], list)
+    assert detail["details"][0]["type"] == "missing"

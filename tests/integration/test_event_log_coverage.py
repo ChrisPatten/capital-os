@@ -192,3 +192,86 @@ def test_simulate_spend_output_hash_is_deterministic(db_available):
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["output_hash"] == second.json()["output_hash"]
+
+
+def test_approval_tools_success_and_validation_failures_logged(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "100.0000")
+    get_settings.cache_clear()
+
+    client = TestClient(app)
+    with transaction() as conn:
+        a1 = create_account(conn, {"code": "1700", "name": "Approval Cash", "account_type": "asset"})
+        a2 = create_account(conn, {"code": "2700", "name": "Approval Liability", "account_type": "liability"})
+
+    proposed = client.post(
+        "/tools/record_transaction_bundle",
+        json={
+            "source_system": "pytest",
+            "external_id": "evt-approval-1",
+            "date": "2026-01-01T00:00:00Z",
+            "description": "proposal",
+            "postings": [
+                {"account_id": a1, "amount": "250.0000", "currency": "USD"},
+                {"account_id": a2, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-propose-evt",
+        },
+    )
+    assert proposed.status_code == 200
+    proposal_id = proposed.json()["proposal_id"]
+
+    approve_ok = client.post(
+        "/tools/approve_proposed_transaction",
+        json={
+            "proposal_id": proposal_id,
+            "reason": "approved",
+            "correlation_id": "corr-approve-evt-1",
+        },
+    )
+    assert approve_ok.status_code == 200
+
+    approve_bad = client.post("/tools/approve_proposed_transaction", json={"correlation_id": "corr-approve-evt-2"})
+    assert approve_bad.status_code == 422
+
+    reject_bad = client.post("/tools/reject_proposed_transaction", json={"correlation_id": "corr-reject-evt-1"})
+    assert reject_bad.status_code == 422
+
+    with transaction() as conn:
+        approve_rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='approve_proposed_transaction'
+            ORDER BY created_at
+            """
+        ).fetchall()
+        reject_rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='reject_proposed_transaction'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+    assert len(approve_rows) == 2
+    assert approve_rows[0]["status"] == "ok"
+    assert approve_rows[0]["correlation_id"] == "corr-approve-evt-1"
+    assert approve_rows[0]["input_hash"]
+    assert approve_rows[0]["output_hash"]
+    assert approve_rows[1]["status"] == "validation_error"
+    assert approve_rows[1]["correlation_id"] == "corr-approve-evt-2"
+    assert approve_rows[1]["input_hash"]
+    assert approve_rows[1]["output_hash"]
+
+    assert len(reject_rows) == 1
+    assert reject_rows[0]["status"] == "validation_error"
+    assert reject_rows[0]["correlation_id"] == "corr-reject-evt-1"
+    assert reject_rows[0]["input_hash"]
+    assert reject_rows[0]["output_hash"]
+    get_settings.cache_clear()

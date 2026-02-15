@@ -30,9 +30,49 @@ class RecordTransactionBundleIn(BaseModel):
 
 
 class RecordTransactionBundleOut(BaseModel):
-    status: Literal["committed", "idempotent-replay"]
+    status: Literal["committed", "idempotent-replay", "proposed", "rejected"]
+    transaction_id: str | None = None
+    posting_ids: list[str] = Field(default_factory=list)
+    proposal_id: str | None = None
+    approval_threshold_amount: Decimal | None = None
+    impact_amount: Decimal | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ApproveProposedTransactionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    reason: str | None = None
+    correlation_id: str
+
+
+class ApproveProposedTransactionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["committed"]
+    proposal_id: str
     transaction_id: str
     posting_ids: list[str]
+    correlation_id: str
+    output_hash: str
+
+
+class RejectProposedTransactionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    reason: str | None = None
+    correlation_id: str
+
+
+class RejectProposedTransactionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["rejected"]
+    proposal_id: str
+    reason: str | None = None
     correlation_id: str
     output_hash: str
 

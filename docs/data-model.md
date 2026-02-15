@@ -1,8 +1,9 @@
 # Data Model Reference
 
-As of 2026-02-14. Source migrations:
+As of 2026-02-15. Source migrations:
 - `migrations/0001_ledger_core.sql`
 - `migrations/0002_security_and_append_only.sql`
+- `migrations/0003_approval_gates.sql`
 
 ## Canonical Tables
 
@@ -115,11 +116,50 @@ Constraints and guards:
 - Append-only update/delete blocked by triggers.
 - Populated by `src/capital_os/observability/event_log.py`.
 
+## `approval_proposals`
+Purpose:
+- Lifecycle state for approval-gated write requests.
+
+Key fields:
+- `proposal_id TEXT PRIMARY KEY`
+- `tool_name TEXT NOT NULL`
+- `source_system TEXT NOT NULL`
+- `external_id TEXT NOT NULL`
+- `correlation_id TEXT NOT NULL`
+- `input_hash TEXT NOT NULL`
+- `policy_threshold_amount NUMERIC NOT NULL`
+- `impact_amount NUMERIC NOT NULL`
+- `request_payload TEXT NOT NULL`
+- `status TEXT CHECK IN ('proposed','rejected','committed')`
+- `approved_transaction_id TEXT REFERENCES ledger_transactions(transaction_id)`
+- `response_payload TEXT`
+- `output_hash TEXT`
+
+Constraints and guards:
+- Unique `(tool_name, source_system, external_id)` for deterministic proposal replay.
+- Delete is blocked by trigger.
+
+## `approval_decisions`
+Purpose:
+- Append-only audit records for approve/reject actions on proposals.
+
+Key fields:
+- `decision_id TEXT PRIMARY KEY`
+- `proposal_id TEXT REFERENCES approval_proposals(proposal_id)`
+- `action TEXT CHECK IN ('approve','reject')`
+- `correlation_id TEXT NOT NULL`
+- `reason TEXT`
+
+Constraints and guards:
+- Append-only update/delete blocked by triggers.
+
 ## Service-Layer Invariants
 - Balanced transaction bundles required before write:
   - `sum(normalized_posting_amounts) == 0.0000`
 - Monetary values normalized using round-half-even at 4 decimal places.
 - Transaction idempotency on `(source_system, external_id)` with deterministic replay response.
+- Above-threshold transaction requests produce deterministic proposal records and responses.
+- Approval commits and approval event logging are coupled in one DB transaction (fail-closed).
 
 ## Read/Write Boundary
 - Canonical writes must run through service/tool layer transaction wrappers.

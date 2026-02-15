@@ -1,6 +1,6 @@
 # Story 4.2: Proposal and Approval Tools
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,17 +17,17 @@ so that approval-gated writes can complete with deterministic idempotent behavio
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add proposal/approval schemas and handlers (AC: 1)
-  - [ ] Define request/response models for proposal and decision actions.
-  - [ ] Add tool handlers under `src/capital_os/tools/`.
-- [ ] Task 2: Implement idempotent approval service path (AC: 2, 3)
-  - [ ] Enforce exactly one canonical commit under duplicate concurrency.
-  - [ ] Return prior canonical result for duplicates.
-- [ ] Task 3: Wire API routes and logging (AC: 1, 4)
-  - [ ] Register tools in API handler map.
-  - [ ] Verify structured logging on success/failure.
-- [ ] Task 4: Add concurrency/idempotency tests (AC: 2, 3)
-  - [ ] Add integration tests for duplicate approve and retry safety.
+- [x] Task 1: Add proposal/approval schemas and handlers (AC: 1)
+  - [x] Define request/response models for proposal and decision actions.
+  - [x] Add tool handlers under `src/capital_os/tools/`.
+- [x] Task 2: Implement idempotent approval service path (AC: 2, 3)
+  - [x] Enforce exactly one canonical commit under duplicate concurrency.
+  - [x] Return prior canonical result for duplicates.
+- [x] Task 3: Wire API routes and logging (AC: 1, 4)
+  - [x] Register tools in API handler map.
+  - [x] Verify structured logging on success/failure.
+- [x] Task 4: Add concurrency/idempotency tests (AC: 2, 3)
+  - [x] Add integration tests for duplicate approve and retry safety.
 
 ## Dev Notes
 
@@ -57,7 +57,7 @@ so that approval-gated writes can complete with deterministic idempotent behavio
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -65,8 +65,18 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added `approve_proposed_transaction` and `reject_proposed_transaction` tool schemas and handlers.
+- Implemented approval/rejection service paths with deterministic replay-safe responses.
+- Wired tools into FastAPI tool registry and event logging.
+- Added concurrency test coverage proving duplicate concurrent approvals produce exactly one canonical transaction commit.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/4-2-proposal-and-approval-tools.md`
+- `src/capital_os/domain/approval/service.py`
+- `src/capital_os/tools/approve_proposed_transaction.py`
+- `src/capital_os/tools/reject_proposed_transaction.py`
+- `src/capital_os/api/app.py`
+- `src/capital_os/schemas/tools.py`
+- `tests/integration/test_approval_workflow.py`
+- `tests/integration/test_tool_contract_validation.py`
+- `tests/integration/test_event_log_coverage.py`

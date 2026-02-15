@@ -32,6 +32,7 @@ def migrated_db(db_available: bool):
 
     run_sql_file(Path("migrations/0001_ledger_core.sql"))
     run_sql_file(Path("migrations/0002_security_and_append_only.sql"))
+    run_sql_file(Path("migrations/0003_approval_gates.sql"))
     yield
 
 
@@ -41,8 +42,10 @@ def clean_db(db_available: bool):
         yield
         return
 
+    run_sql_file(Path("migrations/0003_approval_gates.rollback.sql"))
     run_sql_file(Path("migrations/0002_security_and_append_only.rollback.sql"))
     run_sql_file(Path("migrations/0001_ledger_core.rollback.sql"))
     run_sql_file(Path("migrations/0001_ledger_core.sql"))
     run_sql_file(Path("migrations/0002_security_and_append_only.sql"))
+    run_sql_file(Path("migrations/0003_approval_gates.sql"))
     yield

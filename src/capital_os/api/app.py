@@ -11,10 +11,12 @@ from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 from capital_os.tools import (
     analyze_debt,
+    approve_proposed_transaction,
     compute_capital_posture,
     create_or_update_obligation,
     record_balance_snapshot,
     record_transaction_bundle,
+    reject_proposed_transaction,
     simulate_spend,
 )
 
@@ -27,6 +29,8 @@ TOOL_HANDLERS = {
     "compute_capital_posture": compute_capital_posture.handle,
     "simulate_spend": simulate_spend.handle,
     "analyze_debt": analyze_debt.handle,
+    "approve_proposed_transaction": approve_proposed_transaction.handle,
+    "reject_proposed_transaction": reject_proposed_transaction.handle,
 }
 
 

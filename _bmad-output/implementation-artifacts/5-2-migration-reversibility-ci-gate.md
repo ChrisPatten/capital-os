@@ -1,6 +1,6 @@
 # Story 5.2: Migration Reversibility CI Gate
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -18,13 +18,13 @@ so that schema changes remain reversible and safe.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add migration cycle CI job (AC: 1, 2, 3, 4)
-  - [ ] Configure pipeline job to apply, rollback, and re-apply.
-  - [ ] Ensure non-zero exit on any phase failure.
-- [ ] Task 2: Add test fixtures/scripts as needed (AC: 1, 2, 3)
-  - [ ] Provide deterministic DB setup for migration cycle testing.
-- [ ] Task 3: Document local reproduction steps (AC: 5)
-  - [ ] Add concise docs for running migration cycle checks locally.
+- [x] Task 1: Add migration cycle CI job (AC: 1, 2, 3, 4)
+  - [x] Configure pipeline job to apply, rollback, and re-apply.
+  - [x] Ensure non-zero exit on any phase failure.
+- [x] Task 2: Add test fixtures/scripts as needed (AC: 1, 2, 3)
+  - [x] Provide deterministic DB setup for migration cycle testing.
+- [x] Task 3: Document local reproduction steps (AC: 5)
+  - [x] Add concise docs for running migration cycle checks locally.
 
 ## Dev Notes
 
@@ -53,7 +53,7 @@ so that schema changes remain reversible and safe.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -61,8 +61,13 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added `scripts/check_migration_cycle.py` to enforce apply -> rollback -> re-apply checks against real SQL migration scripts.
+- Added CI workflow job `migration-reversibility` in `.github/workflows/ci.yml`.
+- Documented local reproduction command in `docs/development-workflow.md`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-2-migration-reversibility-ci-gate.md`
+- `scripts/check_migration_cycle.py`
+- `.github/workflows/ci.yml`
+- `docs/development-workflow.md`

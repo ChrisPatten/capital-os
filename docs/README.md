@@ -9,6 +9,7 @@ This directory is the working documentation set for agents and developers implem
 - `docs/tool-reference.md`: Tool contracts, endpoint behavior, and deterministic/error semantics.
 - `docs/development-workflow.md`: Local setup, migrations, test execution, and sprint status update workflow.
 - `docs/testing-matrix.md`: Requirement-to-test traceability with current coverage status.
+- `docs/traceability-matrix.md`: SC/FR/NFR to implementation and executable coverage mapping.
 - `docs/data-model.md`: Canonical SQLite schema semantics, invariants, and trigger behavior.
 - `docs/agent-playbooks/README.md`: Task playbooks for implementing and documenting stories.
 - `docs/backlog-phase1-prd-closure.md`: Canonical backlog for closing PRD gaps.

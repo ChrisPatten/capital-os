@@ -1,6 +1,6 @@
 # Development Workflow
 
-As of 2026-02-14.
+As of 2026-02-15.
 
 ## Environment and Startup
 - Python requirement: `>=3.11` (`pyproject.toml`).
@@ -14,16 +14,19 @@ As of 2026-02-14.
   - `uvicorn capital_os.main:app --reload`
 
 ## Migration Workflow
-- Apply core schema:
+- Apply migrations in order:
   - `migrations/0001_ledger_core.sql`
-- Apply security/append-only controls:
   - `migrations/0002_security_and_append_only.sql`
-- Rollback scripts exist and are used by tests:
+  - `migrations/0003_approval_gates.sql`
+- Rollback scripts exist for each forward migration:
+  - `migrations/0003_approval_gates.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0001_ledger_core.rollback.sql`
+- Reversibility cycle check (local reproduction for CI gate):
+  - `python scripts/check_migration_cycle.py --db-path /tmp/capital-os-migration-cycle.db`
 
 In test setup (`tests/conftest.py`):
-- Session scope applies both forward migrations once.
+- Session scope applies forward migrations once.
 - Function scope resets DB by rollback then re-apply for test isolation.
 
 ## Test Execution
@@ -45,10 +48,18 @@ Current test coverage areas:
   - Append-only trigger enforcement.
 - Replay:
   - Stable `output_hash` for repeated identical inputs.
+  - Seeded repeat-run determinism checks for posture/simulate/debt/approval flows.
 - Security:
   - Read-only DB connection cannot mutate ledger tables.
 - Performance:
   - p95 smoke tests for `record_transaction_bundle`, `compute_capital_posture`, and `simulate_spend`.
+
+## CI Workflow
+- Workflow file: `.github/workflows/ci.yml`
+- Jobs:
+  - `tests`: full pytest suite.
+  - `migration-reversibility`: migration apply/rollback/re-apply gate via `scripts/check_migration_cycle.py`.
+  - `determinism-regression`: replay/hash regression suite (`tests/replay/test_output_replay.py`).
 
 ## Agent Backlog Workflow
 Canonical files:
@@ -64,7 +75,5 @@ Execution order for agents:
 4. Synchronize story status updates back into `sprint-status.yaml`.
 
 ## Current Priority Queue
-From `sprint-status.yaml` on 2026-02-14:
-- Epic 1 stories: `done`.
-- Epic 2 stories: `done`.
-- Epics 3-5 stories: `ready-for-dev`.
+From `sprint-status.yaml` on 2026-02-15:
+- Epics 1-5 stories: `done`.

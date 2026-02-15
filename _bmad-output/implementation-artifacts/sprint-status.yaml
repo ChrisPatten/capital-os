@@ -65,8 +65,8 @@ development_status:
   4-3-approval-transactionality-and-audit: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
-  5-1-traceability-matrix: ready-for-dev
-  5-2-migration-reversibility-ci-gate: ready-for-dev
-  5-3-determinism-regression-suite-expansion: ready-for-dev
+  epic-5: done
+  5-1-traceability-matrix: done
+  5-2-migration-reversibility-ci-gate: done
+  5-3-determinism-regression-suite-expansion: done
   epic-5-retrospective: optional

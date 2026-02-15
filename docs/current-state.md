@@ -24,7 +24,10 @@ As of 2026-02-15.
   - `4-2-proposal-and-approval-tools`: `done`
   - `4-3-approval-transactionality-and-audit`: `done`
   - Epic 4: `done`
-  - Epic 5: `in-progress` (stories currently `ready-for-dev`)
+  - `5-1-traceability-matrix`: `done`
+  - `5-2-migration-reversibility-ci-gate`: `done`
+  - `5-3-determinism-regression-suite-expansion`: `done`
+  - Epic 5: `done`
 
 ## Implemented Service Surface
 - API entrypoint: `src/capital_os/api/app.py`
@@ -77,6 +80,8 @@ As of 2026-02-15.
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
+- Migration reversibility check script:
+  - `scripts/check_migration_cycle.py`
 
 Implemented schema elements include:
 - `accounts`
@@ -105,8 +110,10 @@ Implemented DB protections include:
 
 ## Known Gaps Against AGENTS.md "Phase 1 Scope (In)"
 - Full stress/perf validation against the reference dataset scale in AGENTS.md is not yet present; current perf tests are smoke-level.
-- No CI workflow files are present yet for migration forward/rollback enforcement.
 - Some append-only enforcement allows one controlled update on `ledger_transactions` to persist `response_payload` and `output_hash` post-insert (intended for idempotent replay support).
+- Explicit no-egress runtime enforcement tests are not yet present.
 
-## Not Implemented Yet (Backlog)
-- Epic 5: traceability matrix and CI hardening work.
+## CI and Traceability Additions
+- CI workflow: `.github/workflows/ci.yml`
+- Traceability matrix: `docs/traceability-matrix.md`
+- Determinism replay expansion: `tests/replay/test_output_replay.py`

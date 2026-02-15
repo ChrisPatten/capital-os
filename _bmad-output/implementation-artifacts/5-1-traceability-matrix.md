@@ -1,6 +1,6 @@
 # Story 5.1: Traceability Matrix
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,14 +17,14 @@ so that Phase 1 completion can be audited against SC/FR/NFR requirements.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Build SC/FR/NFR inventory (AC: 1)
-  - [ ] Extract criterion IDs from PRD and related planning docs.
-- [ ] Task 2: Map criteria to code/tests (AC: 1, 2)
-  - [ ] Link each criterion to source files and test files.
-- [ ] Task 3: Record gaps and remediation path (AC: 3)
-  - [ ] Add explicit unresolved items and planned closures.
-- [ ] Task 4: Commit matrix artifact and checks (AC: 4)
-  - [ ] Add doc under `docs/` and include in review workflow.
+- [x] Task 1: Build SC/FR/NFR inventory (AC: 1)
+  - [x] Extract criterion IDs from PRD and related planning docs.
+- [x] Task 2: Map criteria to code/tests (AC: 1, 2)
+  - [x] Link each criterion to source files and test files.
+- [x] Task 3: Record gaps and remediation path (AC: 3)
+  - [x] Add explicit unresolved items and planned closures.
+- [x] Task 4: Commit matrix artifact and checks (AC: 4)
+  - [x] Add doc under `docs/` and include in review workflow.
 
 ## Dev Notes
 
@@ -52,7 +52,7 @@ so that Phase 1 completion can be audited against SC/FR/NFR requirements.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -60,8 +60,13 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added `docs/traceability-matrix.md` with SC/FR/NFR mappings to implementation and executable test coverage.
+- Recorded open PRD gaps with remediation notes (egress testing, full-scale perf gate, branch coverage threshold).
+- Updated documentation index and testing matrix references.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-1-traceability-matrix.md`
+- `docs/traceability-matrix.md`
+- `docs/testing-matrix.md`
+- `docs/README.md`

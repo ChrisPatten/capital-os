@@ -1,6 +1,6 @@
 # Story 5.3: Determinism Regression Suite Expansion
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,15 +17,15 @@ so that deterministic behavior is continuously enforced.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Expand replay test matrix (AC: 1, 2)
-  - [ ] Extend replay suites to include simulation, debt, and approval tool outputs.
-  - [ ] Verify same input/state yields same output hash.
-- [ ] Task 2: Add seeded repeat-run checks (AC: 2)
-  - [ ] Introduce seeded run loops for deterministic equality assertions.
-- [ ] Task 3: Wire determinism checks into CI gate (AC: 3)
-  - [ ] Ensure failures are explicit and actionable.
-- [ ] Task 4: Document deterministic coverage (AC: 4)
-  - [ ] Summarize tool-by-tool determinism checks in project docs.
+- [x] Task 1: Expand replay test matrix (AC: 1, 2)
+  - [x] Extend replay suites to include simulation, debt, and approval tool outputs.
+  - [x] Verify same input/state yields same output hash.
+- [x] Task 2: Add seeded repeat-run checks (AC: 2)
+  - [x] Introduce seeded run loops for deterministic equality assertions.
+- [x] Task 3: Wire determinism checks into CI gate (AC: 3)
+  - [x] Ensure failures are explicit and actionable.
+- [x] Task 4: Document deterministic coverage (AC: 4)
+  - [x] Summarize tool-by-tool determinism checks in project docs.
 
 ## Dev Notes
 
@@ -54,7 +54,7 @@ so that deterministic behavior is continuously enforced.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -62,8 +62,13 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Expanded replay suite in `tests/replay/test_output_replay.py` with seeded repeat-run checks.
+- Added deterministic replay assertions for approval decisions (`approve_proposed_transaction`, `reject_proposed_transaction`).
+- Added CI job `determinism-regression` and documented tool-by-tool deterministic guarantees.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-3-determinism-regression-suite-expansion.md`
+- `tests/replay/test_output_replay.py`
+- `.github/workflows/ci.yml`
+- `docs/testing-matrix.md`

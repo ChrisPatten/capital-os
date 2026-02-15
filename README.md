@@ -8,7 +8,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
 - Debt analysis tooling is implemented (`analyze_debt`) with deterministic ranking, explainability payloads, and sensitivity branch support.
 - Approval-gated write workflow is implemented (`record_transaction_bundle` proposal path + approve/reject tools).
-- Remaining roadmap backlog starts at Epic 5 (CI hardening and expanded DoD coverage).
+- Epic 5 hardening work is implemented: PRD traceability matrix, migration reversibility CI gate, and expanded determinism regression suite.
 
 ## Tech Stack
 - Python 3.11+
@@ -94,6 +94,7 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 - `docs/tool-reference.md`
 - `docs/data-model.md`
 - `docs/testing-matrix.md`
+- `docs/traceability-matrix.md`
 - `docs/development-workflow.md`
 - `docs/agent-playbooks/README.md`
 - `docs/backlog-phase1-prd-closure.md`

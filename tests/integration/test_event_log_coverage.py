@@ -275,3 +275,47 @@ def test_approval_tools_success_and_validation_failures_logged(db_available, mon
     assert reject_rows[0]["input_hash"]
     assert reject_rows[0]["output_hash"]
     get_settings.cache_clear()
+
+
+def test_read_query_tools_success_and_validation_failures_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    with transaction() as conn:
+        create_account(conn, {"code": "1000", "name": "Cash", "account_type": "asset"})
+
+    assert (
+        client.post(
+            "/tools/list_accounts",
+            json={"limit": 5, "correlation_id": "corr-read-evt-ok"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/tools/list_accounts",
+            json={"limit": 5},
+        ).status_code
+        == 422
+    )
+
+    with transaction() as conn:
+        rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='list_accounts'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+    assert len(rows) == 2
+    assert rows[0]["status"] == "ok"
+    assert rows[0]["correlation_id"] == "corr-read-evt-ok"
+    assert rows[0]["input_hash"]
+    assert rows[0]["output_hash"]
+    assert rows[1]["status"] == "validation_error"
+    assert rows[1]["correlation_id"] == "unknown"
+    assert rows[1]["input_hash"]
+    assert rows[1]["output_hash"]

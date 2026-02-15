@@ -72,7 +72,7 @@ development_status:
   epic-5-retrospective: optional
 
   epic-6: in-progress
-  6-1-read-query-tooling-foundation: ready-for-dev
+  6-1-read-query-tooling-foundation: review
   6-2-transaction-and-obligation-query-surface: backlog
   6-3-config-and-proposal-read-surface: backlog
   epic-6-retrospective: optional

@@ -50,3 +50,11 @@ This document maps PRD criteria to implementation and executable coverage.
 1. Add egress-deny runtime enforcement tests for SC-06 / NFR-05.
 2. Add full reference-dataset performance gate for SC-07 / NFR-03.
 3. Add branch coverage threshold enforcement for NFR-07.
+
+## Delta FR Coverage (0215)
+
+| Criterion | Requirement | Implementation | Executable Coverage | Status |
+| --- | --- | --- | --- | --- |
+| FR-13 | List accounts via deterministic read tool | `src/capital_os/tools/list_accounts.py`, `src/capital_os/domain/query/service.py`, `src/capital_os/domain/ledger/repository.py` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` | Covered |
+| FR-14 | Query account hierarchy tree deterministically | `src/capital_os/tools/get_account_tree.py`, `src/capital_os/domain/query/service.py`, `src/capital_os/domain/ledger/repository.py` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` | Covered |
+| FR-15 | Query account balances with source policy controls | `src/capital_os/tools/get_account_balances.py`, `src/capital_os/domain/query/service.py`, `src/capital_os/domain/ledger/repository.py` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py`, `tests/integration/test_tool_contract_validation.py` | Covered |

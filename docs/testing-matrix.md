@@ -12,6 +12,9 @@ As of 2026-02-15.
 | `analyze_debt` | Same input yields identical ordering, explainability payload, and `output_hash` | `tests/unit/test_debt_engine.py`, `tests/integration/test_analyze_debt_tool.py`, `tests/replay/test_output_replay.py` |
 | `approve_proposed_transaction` | Re-approvals for same proposal replay canonical committed payload/hash | `tests/integration/test_approval_workflow.py`, `tests/replay/test_output_replay.py` |
 | `reject_proposed_transaction` | Repeat rejects replay canonical rejected payload/hash | `tests/integration/test_approval_workflow.py`, `tests/replay/test_output_replay.py` |
+| `list_accounts` | Same state/input returns stable page order, cursor behavior, and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
+| `get_account_tree` | Same state/input returns stable hierarchy ordering and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
+| `get_account_balances` | Same state/input returns stable source-policy balances and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
 
 ## PRD Criterion Coverage Summary
 

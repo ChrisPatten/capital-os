@@ -123,6 +123,44 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Supports deterministic idempotent replay behavior on duplicate reject attempts.
 - Logs success and validation failures.
 
+## `list_accounts`
+- Handler: `src/capital_os/tools/list_accounts.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_accounts_page`
+- Input schema: `ListAccountsIn`
+- Output schema: `ListAccountsOut`
+
+### Behavior
+- Deterministic keyset pagination ordered by `(code, account_id)`.
+- Cursor is canonical opaque payload over `{v, code, account_id}`.
+- Malformed cursor returns deterministic `422` validation error.
+- Emits event logs for success and validation failures.
+
+## `get_account_tree`
+- Handler: `src/capital_os/tools/get_account_tree.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_account_tree`
+- Input schema: `GetAccountTreeIn`
+- Output schema: `GetAccountTreeOut`
+
+### Behavior
+- Returns deterministic account hierarchy tree with children sorted by `(code, account_id)`.
+- Supports optional subtree root via `root_account_id`.
+- Emits event logs for success and validation failures.
+
+## `get_account_balances`
+- Handler: `src/capital_os/tools/get_account_balances.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_account_balances`
+- Input schema: `GetAccountBalancesIn`
+- Output schema: `GetAccountBalancesOut`
+
+### Behavior
+- Returns deterministic per-account balances as-of date in `(code, account_id)` order.
+- Supports `source_policy`:
+  - `ledger_only`: summed ledger postings at or before `as_of_date`
+  - `snapshot_only`: latest snapshot at or before `as_of_date` (`source_used = none` if missing)
+  - `best_available`: snapshot when present, otherwise ledger
+- Includes `ledger_balance`, `snapshot_balance`, selected `balance`, and `source_used`.
+- Emits event logs for success and validation failures.
+
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.
 - Validation failure: HTTP `422` deterministic detail payload, with event logging attempt.

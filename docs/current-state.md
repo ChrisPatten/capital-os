@@ -9,6 +9,7 @@ As of 2026-02-15.
 - Spend simulation tooling from Epic 2 is implemented and tested.
 - Debt analysis tooling from Epic 3 is implemented and tested.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
+- Epic 6 read/query foundation (Story 6.1) is implemented and in review.
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -28,6 +29,7 @@ As of 2026-02-15.
   - `5-2-migration-reversibility-ci-gate`: `done`
   - `5-3-determinism-regression-suite-expansion`: `done`
   - Epic 5: `done`
+  - `6-1-read-query-tooling-foundation`: `review`
 
 ## Implemented Service Surface
 - API entrypoint: `src/capital_os/api/app.py`
@@ -43,6 +45,9 @@ As of 2026-02-15.
   - `analyze_debt`
   - `approve_proposed_transaction`
   - `reject_proposed_transaction`
+  - `list_accounts`
+  - `get_account_tree`
+  - `get_account_balances`
 
 ## Domain and Persistence Modules
 - Accounts domain:
@@ -76,10 +81,12 @@ As of 2026-02-15.
 - Core schema migration: `migrations/0001_ledger_core.sql`
 - Security and append-only migration: `migrations/0002_security_and_append_only.sql`
 - Approval gates migration: `migrations/0003_approval_gates.sql`
+- Read query index migration: `migrations/0004_read_query_indexes.sql`
 - Rollback scripts are present:
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
+  - `migrations/0004_read_query_indexes.rollback.sql`
 - Migration reversibility check script:
   - `scripts/check_migration_cycle.py`
 

@@ -14,6 +14,9 @@ from capital_os.tools import (
     approve_proposed_transaction,
     compute_capital_posture,
     create_or_update_obligation,
+    get_account_balances,
+    get_account_tree,
+    list_accounts,
     record_balance_snapshot,
     record_transaction_bundle,
     reject_proposed_transaction,
@@ -31,6 +34,9 @@ TOOL_HANDLERS = {
     "analyze_debt": analyze_debt.handle,
     "approve_proposed_transaction": approve_proposed_transaction.handle,
     "reject_proposed_transaction": reject_proposed_transaction.handle,
+    "list_accounts": list_accounts.handle,
+    "get_account_tree": get_account_tree.handle,
+    "get_account_balances": get_account_balances.handle,
 }
 
 

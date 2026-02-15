@@ -235,3 +235,152 @@ def fetch_accounts_for_ids(conn, account_ids: list[str]) -> list[dict[str, Any]]
         tuple(account_ids),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+def list_accounts_page(conn, *, limit: int, cursor: dict[str, str] | None) -> list[dict[str, Any]]:
+    params: tuple[Any, ...]
+    where_clause = ""
+    if cursor:
+        where_clause = "WHERE (code > ? OR (code = ? AND account_id > ?))"
+        params = (cursor["code"], cursor["code"], cursor["account_id"], limit + 1)
+    else:
+        params = (limit + 1,)
+
+    rows = conn.execute(
+        f"""
+        SELECT account_id, code, name, account_type, parent_account_id, metadata
+        FROM accounts
+        {where_clause}
+        ORDER BY code, account_id
+        LIMIT ?
+        """,
+        params,
+    ).fetchall()
+
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        entry = dict(row)
+        entry["metadata"] = json.loads(entry["metadata"]) if entry.get("metadata") else {}
+        result.append(entry)
+    return result
+
+
+def fetch_account_tree_rows(conn, root_account_id: str | None) -> list[dict[str, Any]]:
+    if root_account_id:
+        rows = conn.execute(
+            """
+            WITH RECURSIVE subtree AS (
+                SELECT account_id, code, name, account_type, parent_account_id, metadata
+                FROM accounts
+                WHERE account_id = ?
+                UNION ALL
+                SELECT c.account_id, c.code, c.name, c.account_type, c.parent_account_id, c.metadata
+                FROM accounts c
+                JOIN subtree s ON c.parent_account_id = s.account_id
+            )
+            SELECT account_id, code, name, account_type, parent_account_id, metadata
+            FROM subtree
+            ORDER BY code, account_id
+            """,
+            (root_account_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT account_id, code, name, account_type, parent_account_id, metadata
+            FROM accounts
+            ORDER BY code, account_id
+            """
+        ).fetchall()
+
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        entry = dict(row)
+        entry["metadata"] = json.loads(entry["metadata"]) if entry.get("metadata") else {}
+        result.append(entry)
+    return result
+
+
+def fetch_account_balances_as_of(
+    conn, *, as_of_date: str, source_policy: str
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        WITH ledger_totals AS (
+            SELECT p.account_id, COALESCE(SUM(p.amount), 0) AS ledger_balance
+            FROM ledger_postings p
+            JOIN ledger_transactions t ON t.transaction_id = p.transaction_id
+            WHERE date(t.transaction_date) <= date(?)
+            GROUP BY p.account_id
+        ),
+        snapshots_ranked AS (
+            SELECT
+              s.account_id,
+              s.balance,
+              s.snapshot_date,
+              ROW_NUMBER() OVER (
+                PARTITION BY s.account_id
+                ORDER BY s.snapshot_date DESC, s.snapshot_id DESC
+              ) AS rn
+            FROM balance_snapshots s
+            WHERE date(s.snapshot_date) <= date(?)
+        ),
+        latest_snapshots AS (
+            SELECT account_id, balance AS snapshot_balance, snapshot_date
+            FROM snapshots_ranked
+            WHERE rn = 1
+        )
+        SELECT
+          a.account_id,
+          a.code,
+          a.name,
+          a.account_type,
+          COALESCE(lt.ledger_balance, 0) AS ledger_balance,
+          ls.snapshot_balance,
+          ls.snapshot_date
+        FROM accounts a
+        LEFT JOIN ledger_totals lt ON lt.account_id = a.account_id
+        LEFT JOIN latest_snapshots ls ON ls.account_id = a.account_id
+        ORDER BY a.code, a.account_id
+        """,
+        (as_of_date, as_of_date),
+    ).fetchall()
+
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        entry = dict(row)
+        ledger_balance = normalize_amount(entry["ledger_balance"])
+        snapshot_balance = (
+            normalize_amount(entry["snapshot_balance"]) if entry["snapshot_balance"] is not None else None
+        )
+
+        if source_policy == "ledger_only":
+            balance = ledger_balance
+            source_used = "ledger"
+        elif source_policy == "snapshot_only":
+            balance = snapshot_balance
+            source_used = "snapshot" if snapshot_balance is not None else "none"
+        else:
+            if snapshot_balance is not None:
+                balance = snapshot_balance
+                source_used = "snapshot"
+            else:
+                balance = ledger_balance
+                source_used = "ledger"
+
+        result.append(
+            {
+                "account_id": entry["account_id"],
+                "code": entry["code"],
+                "name": entry["name"],
+                "account_type": entry["account_type"],
+                "balance": balance,
+                "currency": "USD",
+                "source_used": source_used,
+                "ledger_balance": ledger_balance,
+                "snapshot_balance": snapshot_balance,
+                "snapshot_date": entry["snapshot_date"],
+            }
+        )
+
+    return result

@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from capital_os.domain.ledger.invariants import normalize_amount
+from capital_os.domain.query.pagination import decode_cursor
 
 
 class PostingIn(BaseModel):
@@ -309,3 +310,97 @@ class AnalyzeDebtOut(BaseModel):
     ranked_liabilities: list[AnalyzeDebtLiabilityOut]
     correlation_id: str
     output_hash: str
+
+
+class ListAccountsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor(value)
+        return value
+
+
+class AccountNode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    code: str
+    name: str
+    account_type: Literal["asset", "liability", "equity", "income", "expense"]
+    parent_account_id: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class ListAccountsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    accounts: list[AccountNode]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class TreeAccountNode(AccountNode):
+    model_config = ConfigDict(extra="forbid")
+
+    children: list["TreeAccountNode"] = Field(default_factory=list)
+
+
+class GetAccountTreeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    root_account_id: str | None = None
+    correlation_id: str
+
+
+class GetAccountTreeOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    root_account_id: str | None = None
+    accounts: list[TreeAccountNode]
+    correlation_id: str
+    output_hash: str
+
+
+class GetAccountBalancesIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    as_of_date: date
+    source_policy: Literal["ledger_only", "snapshot_only", "best_available"]
+    correlation_id: str
+
+
+class AccountBalanceRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    code: str
+    name: str
+    account_type: Literal["asset", "liability", "equity", "income", "expense"]
+    balance: Decimal | None = None
+    currency: Literal["USD"]
+    source_used: Literal["ledger", "snapshot", "none"]
+    ledger_balance: Decimal
+    snapshot_balance: Decimal | None = None
+    snapshot_date: date | None = None
+
+
+class GetAccountBalancesOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    as_of_date: date
+    source_policy: Literal["ledger_only", "snapshot_only", "best_available"]
+    balances: list[AccountBalanceRow]
+    correlation_id: str
+    output_hash: str
+
+
+TreeAccountNode.model_rebuild()

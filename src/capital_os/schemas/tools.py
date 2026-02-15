@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from capital_os.domain.entities import DEFAULT_ENTITY_ID
 from capital_os.domain.ledger.invariants import normalize_amount
-from capital_os.domain.query.pagination import decode_cursor
+from capital_os.domain.query.pagination import decode_cursor, decode_cursor_payload
 
 
 class PostingIn(BaseModel):
@@ -488,6 +488,303 @@ class GetAccountBalancesOut(BaseModel):
     as_of_date: date
     source_policy: Literal["ledger_only", "snapshot_only", "best_available"]
     balances: list[AccountBalanceRow]
+    correlation_id: str
+    output_hash: str
+
+
+class ListTransactionsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor_payload(value, required_keys=("transaction_date", "transaction_id"))
+        return value
+
+
+class TransactionListItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_id: str
+    source_system: str
+    external_id: str
+    transaction_date: datetime
+    description: str
+    correlation_id: str
+    entity_id: str
+    created_at: datetime
+    posting_count: int
+    gross_posting_amount: Decimal
+    currency: Literal["USD"]
+
+
+class ListTransactionsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transactions: list[TransactionListItem]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class TransactionPostingOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    posting_id: str
+    account_id: str
+    account_code: str
+    account_name: str
+    amount: Decimal
+    currency: Literal["USD"]
+    memo: str | None = None
+
+
+class GetTransactionByExternalIdIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_system: str
+    external_id: str
+    correlation_id: str
+
+
+class TransactionWithPostingsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_id: str
+    source_system: str
+    external_id: str
+    transaction_date: datetime
+    description: str
+    correlation_id: str
+    entity_id: str
+    created_at: datetime
+    postings: list[TransactionPostingOut]
+
+
+class GetTransactionByExternalIdOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transaction: TransactionWithPostingsOut | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ListObligationsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    active_only: bool = True
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor_payload(value, required_keys=("next_due_date", "obligation_id"))
+        return value
+
+
+class ObligationListItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    obligation_id: str
+    source_system: str
+    name: str
+    account_id: str
+    cadence: Literal["monthly", "annual", "custom"]
+    expected_amount: Decimal
+    variability_flag: bool
+    next_due_date: date
+    metadata: dict = Field(default_factory=dict)
+    active: bool
+    entity_id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ListObligationsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    obligations: list[ObligationListItem]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ListProposalsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    status: Literal["proposed", "rejected", "committed"] | None = None
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor_payload(value, required_keys=("created_at", "proposal_id"))
+        return value
+
+
+class ProposalListItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    tool_name: str
+    source_system: str
+    external_id: str
+    correlation_id: str
+    status: Literal["proposed", "rejected", "committed"]
+    policy_threshold_amount: Decimal
+    impact_amount: Decimal
+    matched_rule_id: str | None = None
+    required_approvals: int
+    entity_id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ListProposalsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposals: list[ProposalListItem]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ProposalDecisionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision_id: str
+    action: Literal["approve", "reject"]
+    correlation_id: str
+    reason: str | None = None
+    approver_id: str | None = None
+    created_at: datetime
+
+
+class GetProposalIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    correlation_id: str
+
+
+class ProposalDetailsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    tool_name: str
+    source_system: str
+    external_id: str
+    correlation_id: str
+    input_hash: str
+    status: Literal["proposed", "rejected", "committed"]
+    policy_threshold_amount: Decimal
+    impact_amount: Decimal
+    request_payload: dict | None = None
+    response_payload: dict | None = None
+    output_hash: str | None = None
+    decision_reason: str | None = None
+    approved_transaction_id: str | None = None
+    matched_rule_id: str | None = None
+    required_approvals: int
+    entity_id: str
+    created_at: datetime
+    updated_at: datetime
+    decisions: list[ProposalDecisionOut]
+
+
+class GetProposalOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal: ProposalDetailsOut | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ConfigRuleOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str
+    priority: int
+    tool_name: str | None = None
+    entity_id: str | None = None
+    transaction_category: str | None = None
+    risk_band: str | None = None
+    velocity_limit_count: int | None = None
+    velocity_window_seconds: int | None = None
+    threshold_amount: Decimal
+    required_approvals: int
+    active: bool
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+
+
+class GetConfigIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    correlation_id: str
+
+
+class GetConfigOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    runtime: dict
+    policy_rules: list[ConfigRuleOut]
+    correlation_id: str
+    output_hash: str
+
+
+class ProposeConfigChangeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_system: str
+    external_id: str
+    scope: Literal["runtime_settings", "policy_rules"]
+    change_payload: dict = Field(default_factory=dict)
+    correlation_id: str
+
+
+class ProposeConfigChangeOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["proposed", "idempotent-replay"]
+    proposal_id: str
+    required_approvals: int
+    approvals_received: int
+    correlation_id: str
+    output_hash: str
+
+
+class ApproveConfigChangeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_id: str
+    approver_id: str | None = Field(default=None, min_length=1, max_length=128)
+    reason: str | None = None
+    correlation_id: str
+
+
+class ApproveConfigChangeOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["applied", "already_applied", "rejected"]
+    proposal_id: str
+    approvals_received: int
+    required_approvals: int
+    applied_change: dict | None = None
     correlation_id: str
     output_hash: str
 

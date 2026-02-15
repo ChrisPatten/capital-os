@@ -429,3 +429,364 @@ def fetch_account_balances_as_of(
         )
 
     return result
+
+
+def list_transactions_page(conn, *, limit: int, cursor: dict[str, str] | None) -> list[dict[str, Any]]:
+    where_clause = ""
+    params: tuple[Any, ...]
+    if cursor:
+        where_clause = "WHERE (t.transaction_date < ? OR (t.transaction_date = ? AND t.transaction_id > ?))"
+        params = (cursor["transaction_date"], cursor["transaction_date"], cursor["transaction_id"], limit + 1)
+    else:
+        params = (limit + 1,)
+
+    rows = conn.execute(
+        f"""
+        SELECT
+          t.transaction_id,
+          t.source_system,
+          t.external_id,
+          t.transaction_date,
+          t.description,
+          t.correlation_id,
+          t.entity_id,
+          t.created_at,
+          COUNT(p.posting_id) AS posting_count,
+          COALESCE(SUM(ABS(p.amount)), 0) AS gross_posting_amount
+        FROM ledger_transactions t
+        LEFT JOIN ledger_postings p ON p.transaction_id = t.transaction_id
+        {where_clause}
+        GROUP BY
+          t.transaction_id,
+          t.source_system,
+          t.external_id,
+          t.transaction_date,
+          t.description,
+          t.correlation_id,
+          t.entity_id,
+          t.created_at
+        ORDER BY t.transaction_date DESC, t.transaction_id ASC
+        LIMIT ?
+        """,
+        params,
+    ).fetchall()
+
+    return [
+        {
+            "transaction_id": row["transaction_id"],
+            "source_system": row["source_system"],
+            "external_id": row["external_id"],
+            "transaction_date": row["transaction_date"],
+            "description": row["description"],
+            "correlation_id": row["correlation_id"],
+            "entity_id": row["entity_id"],
+            "created_at": row["created_at"],
+            "posting_count": int(row["posting_count"]),
+            "gross_posting_amount": normalize_amount(row["gross_posting_amount"]),
+            "currency": "USD",
+        }
+        for row in rows
+    ]
+
+
+def fetch_transaction_with_postings_by_external_id(
+    conn, *, source_system: str, external_id: str
+) -> dict[str, Any] | None:
+    tx_row = conn.execute(
+        """
+        SELECT
+          transaction_id,
+          source_system,
+          external_id,
+          transaction_date,
+          description,
+          correlation_id,
+          entity_id,
+          created_at
+        FROM ledger_transactions
+        WHERE source_system=? AND external_id=?
+        """,
+        (source_system, external_id),
+    ).fetchone()
+    if not tx_row:
+        return None
+
+    posting_rows = conn.execute(
+        """
+        SELECT
+          p.posting_id,
+          p.account_id,
+          a.code AS account_code,
+          a.name AS account_name,
+          p.amount,
+          p.currency,
+          p.memo
+        FROM ledger_postings p
+        JOIN accounts a ON a.account_id = p.account_id
+        WHERE p.transaction_id=?
+        ORDER BY a.code ASC, p.posting_id ASC
+        """,
+        (tx_row["transaction_id"],),
+    ).fetchall()
+    postings = [
+        {
+            "posting_id": row["posting_id"],
+            "account_id": row["account_id"],
+            "account_code": row["account_code"],
+            "account_name": row["account_name"],
+            "amount": normalize_amount(row["amount"]),
+            "currency": row["currency"],
+            "memo": row["memo"],
+        }
+        for row in posting_rows
+    ]
+
+    return {
+        "transaction_id": tx_row["transaction_id"],
+        "source_system": tx_row["source_system"],
+        "external_id": tx_row["external_id"],
+        "transaction_date": tx_row["transaction_date"],
+        "description": tx_row["description"],
+        "correlation_id": tx_row["correlation_id"],
+        "entity_id": tx_row["entity_id"],
+        "created_at": tx_row["created_at"],
+        "postings": postings,
+    }
+
+
+def list_obligations_page(
+    conn, *, limit: int, cursor: dict[str, str] | None, active_only: bool
+) -> list[dict[str, Any]]:
+    where_parts: list[str] = []
+    params: tuple[Any, ...]
+    params_list: list[Any] = []
+    if cursor:
+        where_parts.append("(next_due_date > ? OR (next_due_date = ? AND obligation_id > ?))")
+        params_list.extend([cursor["next_due_date"], cursor["next_due_date"], cursor["obligation_id"]])
+    if active_only:
+        where_parts.append("active = 1")
+
+    where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
+    params_list.append(limit + 1)
+    params = tuple(params_list)
+
+    rows = conn.execute(
+        f"""
+        SELECT
+          obligation_id,
+          source_system,
+          name,
+          account_id,
+          cadence,
+          expected_amount,
+          variability_flag,
+          next_due_date,
+          metadata,
+          active,
+          entity_id,
+          created_at,
+          updated_at
+        FROM obligations
+        {where_clause}
+        ORDER BY next_due_date ASC, obligation_id ASC
+        LIMIT ?
+        """,
+        params,
+    ).fetchall()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        result.append(
+            {
+                "obligation_id": row["obligation_id"],
+                "source_system": row["source_system"],
+                "name": row["name"],
+                "account_id": row["account_id"],
+                "cadence": row["cadence"],
+                "expected_amount": normalize_amount(row["expected_amount"]),
+                "variability_flag": bool(row["variability_flag"]),
+                "next_due_date": row["next_due_date"],
+                "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+                "active": bool(row["active"]),
+                "entity_id": row["entity_id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+        )
+    return result
+
+
+def list_proposals_page(
+    conn, *, limit: int, cursor: dict[str, str] | None, status: str | None
+) -> list[dict[str, Any]]:
+    where_parts: list[str] = []
+    params: tuple[Any, ...]
+    params_list: list[Any] = []
+    if cursor:
+        where_parts.append("(created_at < ? OR (created_at = ? AND proposal_id > ?))")
+        params_list.extend([cursor["created_at"], cursor["created_at"], cursor["proposal_id"]])
+    if status:
+        where_parts.append("status = ?")
+        params_list.append(status)
+
+    where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
+    params_list.append(limit + 1)
+    params = tuple(params_list)
+
+    rows = conn.execute(
+        f"""
+        SELECT
+          proposal_id,
+          tool_name,
+          source_system,
+          external_id,
+          correlation_id,
+          status,
+          policy_threshold_amount,
+          impact_amount,
+          matched_rule_id,
+          required_approvals,
+          entity_id,
+          created_at,
+          updated_at
+        FROM approval_proposals
+        {where_clause}
+        ORDER BY created_at DESC, proposal_id ASC
+        LIMIT ?
+        """,
+        params,
+    ).fetchall()
+    return [
+        {
+            "proposal_id": row["proposal_id"],
+            "tool_name": row["tool_name"],
+            "source_system": row["source_system"],
+            "external_id": row["external_id"],
+            "correlation_id": row["correlation_id"],
+            "status": row["status"],
+            "policy_threshold_amount": normalize_amount(row["policy_threshold_amount"]),
+            "impact_amount": normalize_amount(row["impact_amount"]),
+            "matched_rule_id": row["matched_rule_id"],
+            "required_approvals": int(row["required_approvals"]),
+            "entity_id": row["entity_id"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
+
+
+def fetch_proposal_with_decisions(conn, *, proposal_id: str) -> dict[str, Any] | None:
+    proposal_row = conn.execute(
+        """
+        SELECT
+          proposal_id,
+          tool_name,
+          source_system,
+          external_id,
+          correlation_id,
+          input_hash,
+          status,
+          policy_threshold_amount,
+          impact_amount,
+          request_payload,
+          response_payload,
+          output_hash,
+          decision_reason,
+          approved_transaction_id,
+          matched_rule_id,
+          required_approvals,
+          entity_id,
+          created_at,
+          updated_at
+        FROM approval_proposals
+        WHERE proposal_id=?
+        """,
+        (proposal_id,),
+    ).fetchone()
+    if not proposal_row:
+        return None
+
+    decisions = conn.execute(
+        """
+        SELECT decision_id, action, correlation_id, reason, approver_id, created_at
+        FROM approval_decisions
+        WHERE proposal_id=?
+        ORDER BY created_at ASC, decision_id ASC
+        """,
+        (proposal_id,),
+    ).fetchall()
+    return {
+        "proposal_id": proposal_row["proposal_id"],
+        "tool_name": proposal_row["tool_name"],
+        "source_system": proposal_row["source_system"],
+        "external_id": proposal_row["external_id"],
+        "correlation_id": proposal_row["correlation_id"],
+        "input_hash": proposal_row["input_hash"],
+        "status": proposal_row["status"],
+        "policy_threshold_amount": normalize_amount(proposal_row["policy_threshold_amount"]),
+        "impact_amount": normalize_amount(proposal_row["impact_amount"]),
+        "request_payload": json.loads(proposal_row["request_payload"]) if proposal_row["request_payload"] else None,
+        "response_payload": json.loads(proposal_row["response_payload"]) if proposal_row["response_payload"] else None,
+        "output_hash": proposal_row["output_hash"],
+        "decision_reason": proposal_row["decision_reason"],
+        "approved_transaction_id": proposal_row["approved_transaction_id"],
+        "matched_rule_id": proposal_row["matched_rule_id"],
+        "required_approvals": int(proposal_row["required_approvals"]),
+        "entity_id": proposal_row["entity_id"],
+        "created_at": proposal_row["created_at"],
+        "updated_at": proposal_row["updated_at"],
+        "decisions": [
+            {
+                "decision_id": row["decision_id"],
+                "action": row["action"],
+                "correlation_id": row["correlation_id"],
+                "reason": row["reason"],
+                "approver_id": row["approver_id"],
+                "created_at": row["created_at"],
+            }
+            for row in decisions
+        ],
+    }
+
+
+def list_policy_rules(conn) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT
+          rule_id,
+          priority,
+          tool_name,
+          entity_id,
+          transaction_category,
+          risk_band,
+          velocity_limit_count,
+          velocity_window_seconds,
+          threshold_amount,
+          required_approvals,
+          active,
+          metadata,
+          created_at
+        FROM policy_rules
+        ORDER BY active DESC, priority ASC, rule_id ASC
+        """
+    ).fetchall()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        result.append(
+            {
+                "rule_id": row["rule_id"],
+                "priority": int(row["priority"]),
+                "tool_name": row["tool_name"],
+                "entity_id": row["entity_id"],
+                "transaction_category": row["transaction_category"],
+                "risk_band": row["risk_band"],
+                "velocity_limit_count": row["velocity_limit_count"],
+                "velocity_window_seconds": row["velocity_window_seconds"],
+                "threshold_amount": normalize_amount(row["threshold_amount"]),
+                "required_approvals": int(row["required_approvals"]),
+                "active": bool(row["active"]),
+                "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+                "created_at": row["created_at"],
+            }
+        )
+    return result

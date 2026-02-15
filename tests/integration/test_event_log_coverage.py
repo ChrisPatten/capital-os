@@ -318,6 +318,69 @@ def test_read_query_tools_success_and_validation_failures_logged(db_available):
     assert rows[1]["status"] == "validation_error"
     assert rows[1]["correlation_id"] == "unknown"
     assert rows[1]["input_hash"]
+
+
+def test_query_surface_tools_success_and_validation_failures_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    with transaction() as conn:
+        cash = create_account(conn, {"code": "1100", "name": "Cash", "account_type": "asset"})
+        equity = create_account(conn, {"code": "3100", "name": "Equity", "account_type": "equity"})
+
+    assert (
+        client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-query-surface-1",
+                "date": "2026-01-02T00:00:00Z",
+                "description": "seed query-surface",
+                "postings": [
+                    {"account_id": cash, "amount": "10.0000", "currency": "USD"},
+                    {"account_id": equity, "amount": "-10.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-query-surface-seed",
+            },
+        ).status_code
+        == 200
+    )
+
+    assert (
+        client.post(
+            "/tools/list_transactions",
+            json={"limit": 5, "correlation_id": "corr-query-surface-ok"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/tools/list_transactions",
+            json={"cursor": "invalid"},
+        ).status_code
+        == 422
+    )
+
+    with transaction() as conn:
+        rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='list_transactions'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+    assert len(rows) == 2
+    assert rows[0]["status"] == "ok"
+    assert rows[0]["correlation_id"] == "corr-query-surface-ok"
+    assert rows[0]["input_hash"]
+    assert rows[0]["output_hash"]
+    assert rows[1]["status"] == "validation_error"
+    assert rows[1]["correlation_id"] == "unknown"
+    assert rows[1]["input_hash"]
+    assert rows[1]["output_hash"]
     assert rows[1]["output_hash"]
 
 

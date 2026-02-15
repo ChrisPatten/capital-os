@@ -13,6 +13,7 @@ _MIGRATION_FILES = (
     "0004_read_query_indexes.sql",
     "0005_entity_dimension.sql",
     "0006_periods_policies.sql",
+    "0007_query_surface_indexes.sql",
 )
 
 

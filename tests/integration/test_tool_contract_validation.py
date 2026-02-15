@@ -145,3 +145,37 @@ def test_period_tools_invalid_payload_returns_deterministic_error_shape(db_avail
     lock_detail = lock_response.json()["detail"]
     assert lock_detail["error"] == "validation_error"
     assert isinstance(lock_detail["details"], list)
+
+
+def test_query_surface_tools_invalid_payload_returns_deterministic_error_shape(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+
+    tx_response = client.post(
+        "/tools/list_transactions",
+        json={"cursor": "invalid-cursor", "correlation_id": "corr-q-invalid-1"},
+    )
+    assert tx_response.status_code == 422
+    tx_detail = tx_response.json()["detail"]
+    assert tx_detail["error"] == "validation_error"
+    assert isinstance(tx_detail["details"], list)
+
+    lookup_response = client.post(
+        "/tools/get_transaction_by_external_id",
+        json={"source_system": "pytest", "correlation_id": "corr-q-invalid-2"},
+    )
+    assert lookup_response.status_code == 422
+    lookup_detail = lookup_response.json()["detail"]
+    assert lookup_detail["error"] == "validation_error"
+    assert isinstance(lookup_detail["details"], list)
+
+    proposal_response = client.post(
+        "/tools/propose_config_change",
+        json={"source_system": "pytest", "external_id": "cfg-invalid", "correlation_id": "corr-q-invalid-3"},
+    )
+    assert proposal_response.status_code == 422
+    proposal_detail = proposal_response.json()["detail"]
+    assert proposal_detail["error"] == "validation_error"
+    assert isinstance(proposal_detail["details"], list)

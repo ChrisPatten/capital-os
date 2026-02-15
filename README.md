@@ -9,6 +9,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Debt analysis tooling is implemented (`analyze_debt`) with deterministic ranking, explainability payloads, and sensitivity branch support.
 - Approval-gated write workflow is implemented (`record_transaction_bundle` proposal path + approve/reject tools).
 - Epic 9 governance expansion is implemented (`close_period`, `lock_period`, adjusting-entry enforcement, expanded policy rules, multi-party approvals).
+- Epic 6 deterministic read/query surface is implemented (`list_transactions`, `get_transaction_by_external_id`, `list_obligations`, `list_proposals`, `get_proposal`, `get_config`), plus config-governance hooks (`propose_config_change`, `approve_config_change`).
 - Epic 5 hardening work is implemented: PRD traceability matrix, migration reversibility CI gate, and expanded determinism regression suite.
 
 ## Tech Stack
@@ -66,6 +67,14 @@ pytest
   - `list_accounts`
   - `get_account_tree`
   - `get_account_balances`
+  - `list_transactions`
+  - `get_transaction_by_external_id`
+  - `list_obligations`
+  - `list_proposals`
+  - `get_proposal`
+  - `get_config`
+  - `propose_config_change`
+  - `approve_config_change`
   - `reconcile_account`
   - `close_period`
   - `lock_period`

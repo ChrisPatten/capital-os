@@ -71,10 +71,10 @@ development_status:
   5-3-determinism-regression-suite-expansion: done
   epic-5-retrospective: optional
 
-  epic-6: in-progress
-  6-1-read-query-tooling-foundation: review
-  6-2-transaction-and-obligation-query-surface: backlog
-  6-3-config-and-proposal-read-surface: backlog
+  epic-6: done
+  6-1-read-query-tooling-foundation: done
+  6-2-transaction-and-obligation-query-surface: done
+  6-3-config-and-proposal-read-surface: done
   epic-6-retrospective: optional
 
   epic-7: done

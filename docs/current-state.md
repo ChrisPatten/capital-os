@@ -9,7 +9,7 @@ As of 2026-02-15.
 - Spend simulation tooling from Epic 2 is implemented and tested.
 - Debt analysis tooling from Epic 3 is implemented and tested.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
-- Epic 6 read/query foundation (Story 6.1) is implemented and in review.
+- Epic 6 read/query surface is implemented (Stories 6.1, 6.2, 6.3).
 - Epic 7 reconciliation and truth policy tooling is implemented.
 - Epic 8 entity-dimension foundation (Story 8.1) is implemented and in review.
 - Epic 9 period controls and policy expansion are implemented.
@@ -32,7 +32,10 @@ As of 2026-02-15.
   - `5-2-migration-reversibility-ci-gate`: `done`
   - `5-3-determinism-regression-suite-expansion`: `done`
   - Epic 5: `done`
-  - `6-1-read-query-tooling-foundation`: `review`
+  - `epic-6`: `done`
+  - `6-1-read-query-tooling-foundation`: `done`
+  - `6-2-transaction-and-obligation-query-surface`: `done`
+  - `6-3-config-and-proposal-read-surface`: `done`
   - `epic-8`: `in-progress`
   - `8-1-entity-dimension-schema-migration`: `review`
   - `8-2-consolidated-posture-and-inter-entity-rules`: `ready-for-dev`
@@ -63,6 +66,14 @@ As of 2026-02-15.
   - `list_accounts`
   - `get_account_tree`
   - `get_account_balances`
+  - `list_transactions`
+  - `get_transaction_by_external_id`
+  - `list_obligations`
+  - `list_proposals`
+  - `get_proposal`
+  - `get_config`
+  - `propose_config_change`
+  - `approve_config_change`
   - `reconcile_account`
   - `close_period`
   - `lock_period`
@@ -106,6 +117,7 @@ As of 2026-02-15.
 - Read query index migration: `migrations/0004_read_query_indexes.sql`
 - Entity dimension migration: `migrations/0005_entity_dimension.sql`
 - Period/policy expansion migration: `migrations/0006_periods_policies.sql`
+- Query-surface index migration: `migrations/0007_query_surface_indexes.sql`
 - Rollback scripts are present:
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
@@ -113,6 +125,7 @@ As of 2026-02-15.
   - `migrations/0004_read_query_indexes.rollback.sql`
   - `migrations/0005_entity_dimension.rollback.sql`
   - `migrations/0006_periods_policies.rollback.sql`
+  - `migrations/0007_query_surface_indexes.rollback.sql`
 - Migration reversibility check script:
   - `scripts/check_migration_cycle.py`
 

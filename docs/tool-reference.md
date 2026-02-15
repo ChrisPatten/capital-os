@@ -201,6 +201,93 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Includes `ledger_balance`, `snapshot_balance`, selected `balance`, and `source_used`.
 - Emits event logs for success and validation failures.
 
+## `list_transactions`
+- Handler: `src/capital_os/tools/list_transactions.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_transactions_page`
+- Input schema: `ListTransactionsIn`
+- Output schema: `ListTransactionsOut`
+
+### Behavior
+- Deterministic keyset pagination ordered by `(transaction_date DESC, transaction_id ASC)`.
+- Cursor is canonical opaque payload over `{v, transaction_date, transaction_id}`.
+- Emits event logs for success and validation failures.
+
+## `get_transaction_by_external_id`
+- Handler: `src/capital_os/tools/get_transaction_by_external_id.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_transaction_by_external_id`
+- Input schema: `GetTransactionByExternalIdIn`
+- Output schema: `GetTransactionByExternalIdOut`
+
+### Behavior
+- Deterministically resolves transaction by `(source_system, external_id)`.
+- Includes postings sorted by `(account_code, posting_id)`.
+- Emits event logs for success and validation failures.
+
+## `list_obligations`
+- Handler: `src/capital_os/tools/list_obligations.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_obligations_page`
+- Input schema: `ListObligationsIn`
+- Output schema: `ListObligationsOut`
+
+### Behavior
+- Deterministic keyset pagination ordered by `(next_due_date ASC, obligation_id ASC)`.
+- Supports `active_only` filter with deterministic output.
+- Cursor is canonical opaque payload over `{v, next_due_date, obligation_id}`.
+- Emits event logs for success and validation failures.
+
+## `list_proposals`
+- Handler: `src/capital_os/tools/list_proposals.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_proposals_page`
+- Input schema: `ListProposalsIn`
+- Output schema: `ListProposalsOut`
+
+### Behavior
+- Deterministic keyset pagination ordered by `(created_at DESC, proposal_id ASC)`.
+- Supports optional `status` filter.
+- Cursor is canonical opaque payload over `{v, created_at, proposal_id}`.
+- Emits event logs for success and validation failures.
+
+## `get_proposal`
+- Handler: `src/capital_os/tools/get_proposal.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_proposal`
+- Input schema: `GetProposalIn`
+- Output schema: `GetProposalOut`
+
+### Behavior
+- Returns proposal details plus decisions timeline ordered by `(created_at, decision_id)`.
+- Emits event logs for success and validation failures.
+
+## `get_config`
+- Handler: `src/capital_os/tools/get_config.py`
+- Domain service: `src/capital_os/domain/query/service.py::query_config`
+- Input schema: `GetConfigIn`
+- Output schema: `GetConfigOut`
+
+### Behavior
+- Returns runtime config snapshot and deterministic policy-rule list.
+- Emits event logs for success and validation failures.
+
+## `propose_config_change`
+- Handler: `src/capital_os/tools/propose_config_change.py`
+- Input schema: `ProposeConfigChangeIn`
+- Output schema: `ProposeConfigChangeOut`
+
+### Behavior
+- Creates deterministic config-change proposal record using approval tables.
+- Idempotency scope is `(tool_name='propose_config_change', source_system, external_id)`.
+- Does not directly mutate runtime configuration.
+- Emits event logs for success and validation failures.
+
+## `approve_config_change`
+- Handler: `src/capital_os/tools/approve_config_change.py`
+- Input schema: `ApproveConfigChangeIn`
+- Output schema: `ApproveConfigChangeOut`
+
+### Behavior
+- Approves config-change proposals and persists decision trail.
+- Returns deterministic statuses: `applied`, `already_applied`, or `rejected`.
+- Emits event logs for success and validation failures.
+
 ## `reconcile_account`
 - Handler: `src/capital_os/tools/reconcile_account.py`
 - Domain service: `src/capital_os/domain/reconciliation/service.py::reconcile_account`

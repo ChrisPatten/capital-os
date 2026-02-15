@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from capital_os.domain.entities import DEFAULT_ENTITY_ID
 from capital_os.domain.ledger.invariants import normalize_amount
 from capital_os.domain.query.pagination import decode_cursor
 
@@ -27,6 +28,7 @@ class RecordTransactionBundleIn(BaseModel):
     date: datetime
     description: str
     postings: list[PostingIn] = Field(min_length=2)
+    entity_id: str = DEFAULT_ENTITY_ID
     correlation_id: str
 
 
@@ -87,6 +89,7 @@ class RecordBalanceSnapshotIn(BaseModel):
     balance: Decimal
     currency: Literal["USD"]
     source_artifact_id: str | None = None
+    entity_id: str = DEFAULT_ENTITY_ID
     correlation_id: str
 
 
@@ -110,6 +113,7 @@ class CreateOrUpdateObligationIn(BaseModel):
     variability_flag: bool = False
     next_due_date: date
     metadata: dict = Field(default_factory=dict)
+    entity_id: str = DEFAULT_ENTITY_ID
     correlation_id: str
 
 

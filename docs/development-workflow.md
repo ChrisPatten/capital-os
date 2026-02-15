@@ -18,7 +18,11 @@ As of 2026-02-15.
   - `migrations/0001_ledger_core.sql`
   - `migrations/0002_security_and_append_only.sql`
   - `migrations/0003_approval_gates.sql`
+  - `migrations/0004_read_query_indexes.sql`
+  - `migrations/0005_entity_dimension.sql`
 - Rollback scripts exist for each forward migration:
+  - `migrations/0005_entity_dimension.rollback.sql`
+  - `migrations/0004_read_query_indexes.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0001_ledger_core.rollback.sql`

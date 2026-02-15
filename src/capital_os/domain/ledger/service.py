@@ -85,6 +85,7 @@ def record_transaction_bundle(payload: dict) -> dict:
                         policy_threshold_amount=str(policy.threshold_amount),
                         impact_amount=str(impact_amount),
                         request_payload=payload,
+                        entity_id=payload.get("entity_id"),
                     )
                     proposal = fetch_proposal_by_source_external(
                         conn,

@@ -21,6 +21,7 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Enforces all postings use `USD`.
 - Enforces balanced postings (`sum(amount) == 0` after 4dp normalization).
 - Uses idempotency key `(source_system, external_id)`.
+- Supports optional `entity_id` (defaults to `entity-default`).
 - Writes transaction + postings in one DB transaction.
 - Persists canonical response payload and output hash for replay.
 - Enforces approval policy threshold for high-impact transactions.
@@ -37,6 +38,7 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 
 ### Behavior
 - Upserts by unique `(account_id, snapshot_date)`.
+- Supports optional `entity_id` (defaults to `entity-default`).
 - Returns:
   - `status = "recorded"` on first insert.
   - `status = "updated"` on existing snapshot update.
@@ -50,6 +52,7 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 
 ### Behavior
 - Upserts by unique `(source_system, name, account_id)`.
+- Supports optional `entity_id` (defaults to `entity-default`).
 - Returns:
   - `status = "created"` on first insert.
   - `status = "updated"` on existing obligation update.

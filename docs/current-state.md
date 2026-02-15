@@ -11,6 +11,7 @@ As of 2026-02-15.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
 - Epic 6 read/query foundation (Story 6.1) is implemented and in review.
 - Epic 7 reconciliation and truth policy tooling is implemented.
+- Epic 8 entity-dimension foundation (Story 8.1) is implemented and in review.
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -31,6 +32,10 @@ As of 2026-02-15.
   - `5-3-determinism-regression-suite-expansion`: `done`
   - Epic 5: `done`
   - `6-1-read-query-tooling-foundation`: `review`
+  - `epic-8`: `in-progress`
+  - `8-1-entity-dimension-schema-migration`: `review`
+  - `8-2-consolidated-posture-and-inter-entity-rules`: `ready-for-dev`
+  - `8-3-multi-entity-scale-and-regression-tests`: `ready-for-dev`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`
@@ -88,11 +93,13 @@ As of 2026-02-15.
 - Security and append-only migration: `migrations/0002_security_and_append_only.sql`
 - Approval gates migration: `migrations/0003_approval_gates.sql`
 - Read query index migration: `migrations/0004_read_query_indexes.sql`
+- Entity dimension migration: `migrations/0005_entity_dimension.sql`
 - Rollback scripts are present:
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
   - `migrations/0004_read_query_indexes.rollback.sql`
+  - `migrations/0005_entity_dimension.rollback.sql`
 - Migration reversibility check script:
   - `scripts/check_migration_cycle.py`
 
@@ -105,6 +112,7 @@ Implemented schema elements include:
 - `event_log`
 - `approval_proposals`
 - `approval_decisions`
+- `entities`
 
 Implemented DB protections include:
 - Account cycle prevention triggers on `accounts`.

@@ -30,10 +30,18 @@ def migrated_db(db_available: bool):
         yield
         return
 
+    # Reset any pre-existing local schema so non-idempotent ALTER migrations can re-apply cleanly.
+    run_sql_file(Path("migrations/0005_entity_dimension.rollback.sql"))
+    run_sql_file(Path("migrations/0004_read_query_indexes.rollback.sql"))
+    run_sql_file(Path("migrations/0003_approval_gates.rollback.sql"))
+    run_sql_file(Path("migrations/0002_security_and_append_only.rollback.sql"))
+    run_sql_file(Path("migrations/0001_ledger_core.rollback.sql"))
+
     run_sql_file(Path("migrations/0001_ledger_core.sql"))
     run_sql_file(Path("migrations/0002_security_and_append_only.sql"))
     run_sql_file(Path("migrations/0003_approval_gates.sql"))
     run_sql_file(Path("migrations/0004_read_query_indexes.sql"))
+    run_sql_file(Path("migrations/0005_entity_dimension.sql"))
     yield
 
 
@@ -43,6 +51,7 @@ def clean_db(db_available: bool):
         yield
         return
 
+    run_sql_file(Path("migrations/0005_entity_dimension.rollback.sql"))
     run_sql_file(Path("migrations/0004_read_query_indexes.rollback.sql"))
     run_sql_file(Path("migrations/0003_approval_gates.rollback.sql"))
     run_sql_file(Path("migrations/0002_security_and_append_only.rollback.sql"))
@@ -51,4 +60,5 @@ def clean_db(db_available: bool):
     run_sql_file(Path("migrations/0002_security_and_append_only.sql"))
     run_sql_file(Path("migrations/0003_approval_gates.sql"))
     run_sql_file(Path("migrations/0004_read_query_indexes.sql"))
+    run_sql_file(Path("migrations/0005_entity_dimension.sql"))
     yield

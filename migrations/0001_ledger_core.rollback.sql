@@ -6,3 +6,4 @@ DROP TABLE IF EXISTS balance_snapshots;
 DROP TABLE IF EXISTS ledger_postings;
 DROP TABLE IF EXISTS ledger_transactions;
 DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS entities;

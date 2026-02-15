@@ -4,6 +4,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
+from capital_os.domain.entities import DEFAULT_ENTITY_ID
 from capital_os.domain.ledger.invariants import normalize_amount
 
 
@@ -30,8 +31,8 @@ def insert_transaction_bundle(conn, payload: dict[str, Any]) -> tuple[str, list[
     conn.execute(
         """
         INSERT INTO ledger_transactions (
-            transaction_id, source_system, external_id, transaction_date, description, correlation_id, input_hash
-        ) VALUES (?,?,?,?,?,?,?)
+            transaction_id, source_system, external_id, transaction_date, description, correlation_id, input_hash, entity_id
+        ) VALUES (?,?,?,?,?,?,?,?)
         """,
         (
             tx_id,
@@ -41,6 +42,7 @@ def insert_transaction_bundle(conn, payload: dict[str, Any]) -> tuple[str, list[
             payload["description"],
             payload["correlation_id"],
             payload["input_hash"],
+            payload.get("entity_id", DEFAULT_ENTITY_ID),
         ),
     )
     posting_ids: list[str] = []
@@ -86,7 +88,7 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
         conn.execute(
             """
             UPDATE balance_snapshots
-            SET balance=?, currency=?, source_artifact_id=?, source_system=?, updated_at=CURRENT_TIMESTAMP
+            SET balance=?, currency=?, source_artifact_id=?, source_system=?, entity_id=?, updated_at=CURRENT_TIMESTAMP
             WHERE snapshot_id=?
             """,
             (
@@ -94,6 +96,7 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
                 payload["currency"],
                 payload.get("source_artifact_id"),
                 payload["source_system"],
+                payload.get("entity_id", DEFAULT_ENTITY_ID),
                 snapshot_id,
             ),
         )
@@ -103,8 +106,8 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
     conn.execute(
         """
         INSERT INTO balance_snapshots (
-            snapshot_id, source_system, account_id, snapshot_date, balance, currency, source_artifact_id
-        ) VALUES (?,?,?,?,?,?,?)
+            snapshot_id, source_system, account_id, snapshot_date, balance, currency, source_artifact_id, entity_id
+        ) VALUES (?,?,?,?,?,?,?,?)
         """,
         (
             snapshot_id,
@@ -114,6 +117,7 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
             str(normalize_amount(payload["balance"])),
             payload["currency"],
             payload.get("source_artifact_id"),
+            payload.get("entity_id", DEFAULT_ENTITY_ID),
         ),
     )
     return snapshot_id, "recorded"
@@ -129,7 +133,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
         conn.execute(
             """
             UPDATE obligations
-            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, active=1, updated_at=CURRENT_TIMESTAMP
+            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, entity_id=?, active=1, updated_at=CURRENT_TIMESTAMP
             WHERE obligation_id=?
             """,
             (
@@ -138,6 +142,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
                 1 if payload.get("variability_flag", False) else 0,
                 str(payload["next_due_date"]),
                 json.dumps(payload.get("metadata", {}), separators=(",", ":")),
+                payload.get("entity_id", DEFAULT_ENTITY_ID),
                 obligation_id,
             ),
         )
@@ -148,8 +153,8 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
         """
         INSERT INTO obligations (
             obligation_id, source_system, name, account_id, cadence, expected_amount,
-            variability_flag, next_due_date, metadata, active
-        ) VALUES (?,?,?,?,?,?,?,?,?,1)
+            variability_flag, next_due_date, metadata, active, entity_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,1,?)
         """,
         (
             obligation_id,
@@ -161,6 +166,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
             1 if payload.get("variability_flag", False) else 0,
             str(payload["next_due_date"]),
             json.dumps(payload.get("metadata", {}), separators=(",", ":")),
+            payload.get("entity_id", DEFAULT_ENTITY_ID),
         ),
     )
     return obligation_id, "created"
@@ -170,8 +176,8 @@ def create_account(conn, payload: dict[str, Any]) -> str:
     account_id = str(uuid4())
     conn.execute(
         """
-        INSERT INTO accounts (account_id, code, name, account_type, parent_account_id, metadata)
-        VALUES (?,?,?,?,?,?)
+        INSERT INTO accounts (account_id, code, name, account_type, parent_account_id, metadata, entity_id)
+        VALUES (?,?,?,?,?,?,?)
         """,
         (
             account_id,
@@ -180,6 +186,7 @@ def create_account(conn, payload: dict[str, Any]) -> str:
             payload["account_type"],
             payload.get("parent_account_id"),
             json.dumps(payload.get("metadata", {}), separators=(",", ":")),
+            payload.get("entity_id", DEFAULT_ENTITY_ID),
         ),
     )
     return account_id

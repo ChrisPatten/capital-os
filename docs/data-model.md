@@ -5,8 +5,24 @@ As of 2026-02-15. Source migrations:
 - `migrations/0002_security_and_append_only.sql`
 - `migrations/0003_approval_gates.sql`
 - `migrations/0004_read_query_indexes.sql`
+- `migrations/0005_entity_dimension.sql`
 
 ## Canonical Tables
+
+## `entities`
+Purpose:
+- Canonical entity dimension for multi-entity financial records.
+
+Key fields:
+- `entity_id TEXT PRIMARY KEY`
+- `code TEXT NOT NULL UNIQUE`
+- `name TEXT NOT NULL`
+- `metadata TEXT NOT NULL DEFAULT '{}'`
+
+Constraints:
+- Deterministic default row seeded by migration:
+  - `entity_id = 'entity-default'`
+  - `code = 'DEFAULT'`
 
 ## `accounts`
 Purpose:
@@ -19,6 +35,7 @@ Key fields:
 - `account_type TEXT CHECK IN ('asset','liability','equity','income','expense')`
 - `parent_account_id TEXT REFERENCES accounts(account_id)`
 - `metadata TEXT NOT NULL DEFAULT '{}'`
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
 
 Constraints and guards:
 - Unique `code`.
@@ -38,6 +55,7 @@ Key fields:
 - `input_hash TEXT NOT NULL`
 - `output_hash TEXT` (set after canonical response shaping)
 - `response_payload TEXT` (serialized canonical response)
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
 
 Constraints and guards:
 - Unique `(source_system, external_id)` for idempotency.
@@ -72,6 +90,7 @@ Key fields:
 - `balance NUMERIC NOT NULL`
 - `currency TEXT NOT NULL CHECK (currency = 'USD')`
 - `source_artifact_id TEXT`
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
 
 Constraints:
 - Unique `(account_id, snapshot_date)`.
@@ -92,6 +111,7 @@ Key fields:
 - `next_due_date TEXT NOT NULL`
 - `metadata TEXT NOT NULL DEFAULT '{}'`
 - `active INTEGER NOT NULL DEFAULT 1`
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
 
 Constraints:
 - Unique `(source_system, name, account_id)`.
@@ -135,6 +155,7 @@ Key fields:
 - `approved_transaction_id TEXT REFERENCES ledger_transactions(transaction_id)`
 - `response_payload TEXT`
 - `output_hash TEXT`
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
 
 Constraints and guards:
 - Unique `(tool_name, source_system, external_id)` for deterministic proposal replay.

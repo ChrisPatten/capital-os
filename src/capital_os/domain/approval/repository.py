@@ -4,6 +4,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
+from capital_os.domain.entities import DEFAULT_ENTITY_ID
 from capital_os.observability.hashing import canonical_json
 
 
@@ -66,14 +67,15 @@ def insert_proposal(
     policy_threshold_amount: str,
     impact_amount: str,
     request_payload: dict[str, Any],
+    entity_id: str | None = None,
 ) -> str:
     proposal_id = str(uuid4())
     conn.execute(
         """
         INSERT INTO approval_proposals (
           proposal_id, tool_name, source_system, external_id, correlation_id,
-          input_hash, policy_threshold_amount, impact_amount, request_payload, status
-        ) VALUES (?,?,?,?,?,?,?,?,?,'proposed')
+          input_hash, policy_threshold_amount, impact_amount, request_payload, status, entity_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,'proposed',?)
         """,
         (
             proposal_id,
@@ -85,6 +87,7 @@ def insert_proposal(
             policy_threshold_amount,
             impact_amount,
             canonical_json(request_payload),
+            entity_id or DEFAULT_ENTITY_ID,
         ),
     )
     return proposal_id

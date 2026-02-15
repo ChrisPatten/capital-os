@@ -319,3 +319,52 @@ def test_read_query_tools_success_and_validation_failures_logged(db_available):
     assert rows[1]["correlation_id"] == "unknown"
     assert rows[1]["input_hash"]
     assert rows[1]["output_hash"]
+
+
+def test_reconcile_account_success_and_validation_failures_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    with transaction() as conn:
+        account_id = create_account(conn, {"code": "4100", "name": "Recon", "account_type": "asset"})
+
+    assert (
+        client.post(
+            "/tools/reconcile_account",
+            json={
+                "account_id": account_id,
+                "as_of_date": "2026-01-10",
+                "method": "best_available",
+                "correlation_id": "corr-recon-evt-ok",
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/tools/reconcile_account",
+            json={"account_id": account_id, "correlation_id": "corr-recon-evt-invalid"},
+        ).status_code
+        == 422
+    )
+
+    with transaction() as conn:
+        rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='reconcile_account'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+    assert len(rows) == 2
+    assert rows[0]["status"] == "ok"
+    assert rows[0]["correlation_id"] == "corr-recon-evt-ok"
+    assert rows[0]["input_hash"]
+    assert rows[0]["output_hash"]
+    assert rows[1]["status"] == "validation_error"
+    assert rows[1]["correlation_id"] == "corr-recon-evt-invalid"
+    assert rows[1]["input_hash"]
+    assert rows[1]["output_hash"]

@@ -374,7 +374,7 @@ class GetAccountBalancesIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     as_of_date: date
-    source_policy: Literal["ledger_only", "snapshot_only", "best_available"]
+    source_policy: Literal["ledger_only", "snapshot_only", "best_available"] | None = None
     correlation_id: str
 
 
@@ -399,6 +399,53 @@ class GetAccountBalancesOut(BaseModel):
     as_of_date: date
     source_policy: Literal["ledger_only", "snapshot_only", "best_available"]
     balances: list[AccountBalanceRow]
+    correlation_id: str
+    output_hash: str
+
+
+class ReconcileSuggestedPosting(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    amount: Decimal
+    currency: Literal["USD"]
+    memo: str | None = None
+
+
+class ReconcileSuggestedAdjustmentBundle(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["proposed"]
+    auto_commit: Literal[False]
+    source_system: str
+    external_id: str
+    date: date
+    description: str
+    postings: list[ReconcileSuggestedPosting] = Field(min_length=2)
+
+
+class ReconcileAccountIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    as_of_date: date
+    method: Literal["ledger_only", "snapshot_only", "best_available"]
+    correlation_id: str
+
+
+class ReconcileAccountOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["ok", "account_not_found"]
+    account_id: str
+    as_of_date: date
+    method: Literal["ledger_only", "snapshot_only", "best_available"]
+    source_used: Literal["ledger", "snapshot", "none"]
+    ledger_balance: Decimal | None = None
+    snapshot_balance: Decimal | None = None
+    snapshot_date: date | None = None
+    delta: Decimal | None = None
+    suggested_adjustment_bundle: ReconcileSuggestedAdjustmentBundle | None = None
     correlation_id: str
     output_hash: str
 

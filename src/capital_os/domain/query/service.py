@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from capital_os.config import get_settings
 from capital_os.db.session import read_only_connection
 from capital_os.domain.ledger.repository import (
     fetch_account_balances_as_of,
@@ -55,8 +56,8 @@ def query_account_tree(root_account_id: str | None) -> dict:
     return {"root_account_id": root_account_id, "accounts": roots}
 
 
-def query_account_balances(*, as_of_date: str, source_policy: str) -> dict:
+def query_account_balances(*, as_of_date: str, source_policy: str | None) -> dict:
+    resolved_policy = source_policy or get_settings().balance_source_policy
     with read_only_connection() as conn:
-        rows = fetch_account_balances_as_of(conn, as_of_date=as_of_date, source_policy=source_policy)
-    return {"as_of_date": as_of_date, "source_policy": source_policy, "balances": rows}
-
+        rows = fetch_account_balances_as_of(conn, as_of_date=as_of_date, source_policy=resolved_policy)
+    return {"as_of_date": as_of_date, "source_policy": resolved_policy, "balances": rows}

@@ -10,6 +10,7 @@ As of 2026-02-15.
 - Debt analysis tooling from Epic 3 is implemented and tested.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
 - Epic 6 read/query foundation (Story 6.1) is implemented and in review.
+- Epic 7 reconciliation and truth policy tooling is implemented.
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -30,6 +31,10 @@ As of 2026-02-15.
   - `5-3-determinism-regression-suite-expansion`: `done`
   - Epic 5: `done`
   - `6-1-read-query-tooling-foundation`: `review`
+  - `epic-7`: `done`
+  - `7-1-reconciliation-domain-and-tool`: `done`
+  - `7-2-truth-selection-policy-wiring`: `done`
+  - `7-3-reconciliation-tests-and-determinism`: `done`
 
 ## Implemented Service Surface
 - API entrypoint: `src/capital_os/api/app.py`
@@ -48,6 +53,7 @@ As of 2026-02-15.
   - `list_accounts`
   - `get_account_tree`
   - `get_account_balances`
+  - `reconcile_account`
 
 ## Domain and Persistence Modules
 - Accounts domain:

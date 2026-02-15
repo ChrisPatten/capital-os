@@ -17,6 +17,7 @@ from capital_os.tools import (
     get_account_balances,
     get_account_tree,
     list_accounts,
+    reconcile_account,
     record_balance_snapshot,
     record_transaction_bundle,
     reject_proposed_transaction,
@@ -37,6 +38,7 @@ TOOL_HANDLERS = {
     "list_accounts": list_accounts.handle,
     "get_account_tree": get_account_tree.handle,
     "get_account_balances": get_account_balances.handle,
+    "reconcile_account": reconcile_account.handle,
 }
 
 

@@ -77,10 +77,10 @@ development_status:
   6-3-config-and-proposal-read-surface: backlog
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-reconciliation-domain-and-tool: backlog
-  7-2-truth-selection-policy-wiring: backlog
-  7-3-reconciliation-tests-and-determinism: backlog
+  epic-7: done
+  7-1-reconciliation-domain-and-tool: done
+  7-2-truth-selection-policy-wiring: done
+  7-3-reconciliation-tests-and-determinism: done
   epic-7-retrospective: optional
 
   epic-8: backlog

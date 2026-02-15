@@ -15,6 +15,7 @@ As of 2026-02-15.
 | `list_accounts` | Same state/input returns stable page order, cursor behavior, and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
 | `get_account_tree` | Same state/input returns stable hierarchy ordering and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
 | `get_account_balances` | Same state/input returns stable source-policy balances and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
+| `reconcile_account` | Same state/input returns stable reconciliation payload, proposed-only suggestion, and `output_hash` | `tests/integration/test_reconcile_account_tool.py`, `tests/replay/test_reconciliation_replay.py` |
 
 ## PRD Criterion Coverage Summary
 

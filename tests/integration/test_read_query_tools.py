@@ -169,6 +169,54 @@ def test_get_account_balances_source_policy_deterministic(db_available):
     assert best_row["source_used"] == "snapshot"
 
 
+def test_get_account_balances_uses_configured_default_policy(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_BALANCE_SOURCE_POLICY", "ledger_only")
+    get_settings.cache_clear()
+
+    client = TestClient(app)
+    ids = _seed_accounts()
+    record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "bal-default-1",
+            "date": "2026-01-05T00:00:00Z",
+            "description": "opening",
+            "postings": [
+                {"account_id": ids["cash"], "amount": "100.0000", "currency": "USD"},
+                {"account_id": ids["equity"], "amount": "-100.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-bal-default-ledger",
+        }
+    )
+    record_balance_snapshot(
+        {
+            "source_system": "pytest",
+            "account_id": ids["cash"],
+            "snapshot_date": "2026-01-06",
+            "balance": "95.0000",
+            "currency": "USD",
+            "correlation_id": "corr-bal-default-snapshot",
+        }
+    )
+
+    response = client.post(
+        "/tools/get_account_balances",
+        json={"as_of_date": "2026-01-10", "correlation_id": "corr-bal-default"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_policy"] == "ledger_only"
+    cash_row = [row for row in body["balances"] if row["account_id"] == ids["cash"]][0]
+    assert cash_row["balance"] == 100.0
+    assert cash_row["source_used"] == "ledger"
+    get_settings.cache_clear()
+
+
 def test_read_tools_do_not_mutate_canonical_tables(db_available):
     if not db_available:
         pytest.skip("database unavailable")

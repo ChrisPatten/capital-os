@@ -154,11 +154,27 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 
 ### Behavior
 - Returns deterministic per-account balances as-of date in `(code, account_id)` order.
-- Supports `source_policy`:
+- Supports `source_policy` (optional; defaults to configured `CAPITAL_OS_BALANCE_SOURCE_POLICY`):
   - `ledger_only`: summed ledger postings at or before `as_of_date`
   - `snapshot_only`: latest snapshot at or before `as_of_date` (`source_used = none` if missing)
   - `best_available`: snapshot when present, otherwise ledger
 - Includes `ledger_balance`, `snapshot_balance`, selected `balance`, and `source_used`.
+- Emits event logs for success and validation failures.
+
+## `reconcile_account`
+- Handler: `src/capital_os/tools/reconcile_account.py`
+- Domain service: `src/capital_os/domain/reconciliation/service.py::reconcile_account`
+- Input schema: `ReconcileAccountIn`
+- Output schema: `ReconcileAccountOut`
+
+### Behavior
+- Non-mutating reconciliation tool for a single account as-of date.
+- Compares `ledger_balance` vs latest `snapshot_balance` and returns `delta = snapshot_balance - ledger_balance`.
+- `method` controls truth selection and suggestion behavior:
+  - `ledger_only`: no adjustment suggestion.
+  - `snapshot_only`: proposes reconciliation adjustment bundle when snapshot exists and `delta != 0`.
+  - `best_available`: behaves like snapshot when snapshot exists, otherwise ledger.
+- Suggested adjustments are always proposal-only (`auto_commit = false`) and never write ledger rows.
 - Emits event logs for success and validation failures.
 
 ## Error Semantics

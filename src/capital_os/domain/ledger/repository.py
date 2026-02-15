@@ -301,6 +301,41 @@ def fetch_account_tree_rows(conn, root_account_id: str | None) -> list[dict[str,
     return result
 
 
+def fetch_account_balance_context(conn, *, account_id: str, as_of_date: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        WITH ledger_total AS (
+            SELECT COALESCE(SUM(p.amount), 0) AS ledger_balance
+            FROM ledger_postings p
+            JOIN ledger_transactions t ON t.transaction_id = p.transaction_id
+            WHERE p.account_id = ? AND date(t.transaction_date) <= date(?)
+        ),
+        latest_snapshot AS (
+            SELECT s.balance AS snapshot_balance, s.snapshot_date
+            FROM balance_snapshots s
+            WHERE s.account_id = ? AND date(s.snapshot_date) <= date(?)
+            ORDER BY s.snapshot_date DESC, s.snapshot_id DESC
+            LIMIT 1
+        )
+        SELECT
+          a.account_id,
+          a.code,
+          a.name,
+          a.account_type,
+          (SELECT ledger_balance FROM ledger_total) AS ledger_balance,
+          ls.snapshot_balance,
+          ls.snapshot_date
+        FROM accounts a
+        LEFT JOIN latest_snapshot ls ON 1=1
+        WHERE a.account_id = ?
+        """,
+        (account_id, as_of_date, account_id, as_of_date, account_id),
+    ).fetchone()
+    if not row:
+        return None
+    return dict(row)
+
+
 def fetch_account_balances_as_of(
     conn, *, as_of_date: str, source_policy: str
 ) -> list[dict[str, Any]]:

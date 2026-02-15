@@ -90,7 +90,7 @@ def test_read_query_tools_invalid_payload_returns_deterministic_error_shape(db_a
     client = TestClient(app)
     response = client.post(
         "/tools/get_account_balances",
-        json={"as_of_date": "2026-01-10", "correlation_id": "corr-read-invalid"},
+        json={"source_policy": "not-a-policy", "correlation_id": "corr-read-invalid"},
     )
     assert response.status_code == 422
     detail = response.json()["detail"]
@@ -106,3 +106,18 @@ def test_read_query_tools_invalid_payload_returns_deterministic_error_shape(db_a
     cursor_detail = cursor_response.json()["detail"]
     assert cursor_detail["error"] == "validation_error"
     assert isinstance(cursor_detail["details"], list)
+
+
+def test_reconcile_account_invalid_payload_returns_deterministic_error_shape(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    response = client.post(
+        "/tools/reconcile_account",
+        json={"account_id": "missing-fields", "correlation_id": "corr-reconcile-invalid"},
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "validation_error"
+    assert isinstance(detail["details"], list)

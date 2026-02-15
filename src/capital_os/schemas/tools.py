@@ -29,7 +29,25 @@ class RecordTransactionBundleIn(BaseModel):
     description: str
     postings: list[PostingIn] = Field(min_length=2)
     entity_id: str = DEFAULT_ENTITY_ID
+    transaction_category: str | None = Field(default=None, min_length=1, max_length=64)
+    risk_band: Literal["low", "medium", "high", "critical"] | None = None
+    is_adjusting_entry: bool = False
+    adjusting_reason_code: Literal["accrual", "reclass", "correction", "year_end", "other"] | None = None
+    override_period_lock: bool = False
+    override_reason: str | None = Field(default=None, max_length=256)
     correlation_id: str
+
+    @model_validator(mode="after")
+    def _validate_adjustments(self) -> "RecordTransactionBundleIn":
+        if self.is_adjusting_entry and not self.adjusting_reason_code:
+            raise ValueError("adjusting_reason_code is required when is_adjusting_entry=true")
+        if not self.is_adjusting_entry and self.adjusting_reason_code is not None:
+            raise ValueError("adjusting_reason_code must be null when is_adjusting_entry=false")
+        if self.override_period_lock and not self.override_reason:
+            raise ValueError("override_reason is required when override_period_lock=true")
+        if not self.override_period_lock and self.override_reason is not None:
+            raise ValueError("override_reason must be null when override_period_lock=false")
+        return self
 
 
 class RecordTransactionBundleOut(BaseModel):
@@ -39,6 +57,9 @@ class RecordTransactionBundleOut(BaseModel):
     proposal_id: str | None = None
     approval_threshold_amount: Decimal | None = None
     impact_amount: Decimal | None = None
+    matched_rule_id: str | None = None
+    required_approvals: int | None = None
+    approvals_received: int | None = None
     correlation_id: str
     output_hash: str
 
@@ -47,6 +68,7 @@ class ApproveProposedTransactionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     proposal_id: str
+    approver_id: str | None = Field(default=None, min_length=1, max_length=128)
     reason: str | None = None
     correlation_id: str
 
@@ -54,10 +76,12 @@ class ApproveProposedTransactionIn(BaseModel):
 class ApproveProposedTransactionOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: Literal["committed"]
+    status: Literal["committed", "proposed"]
     proposal_id: str
-    transaction_id: str
-    posting_ids: list[str]
+    transaction_id: str | None = None
+    posting_ids: list[str] = Field(default_factory=list)
+    required_approvals: int | None = None
+    approvals_received: int | None = None
     correlation_id: str
     output_hash: str
 
@@ -66,6 +90,7 @@ class RejectProposedTransactionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     proposal_id: str
+    approver_id: str | None = Field(default=None, min_length=1, max_length=128)
     reason: str | None = None
     correlation_id: str
 
@@ -76,6 +101,66 @@ class RejectProposedTransactionOut(BaseModel):
     status: Literal["rejected"]
     proposal_id: str
     reason: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class ClosePeriodIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    period_key: str = Field(pattern=r"^\d{4}-\d{2}$")
+    entity_id: str = DEFAULT_ENTITY_ID
+    actor_id: str | None = Field(default=None, min_length=1, max_length=128)
+    correlation_id: str
+
+    @field_validator("period_key")
+    @classmethod
+    def _validate_period_key_month(cls, value: str) -> str:
+        month = int(value.split("-")[1])
+        if month < 1 or month > 12:
+            raise ValueError("period_key month must be in 01..12")
+        return value
+
+
+class ClosePeriodOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["closed", "already_closed", "already_locked"]
+    period_key: str
+    entity_id: str
+    state: Literal["closed", "locked"]
+    closed_at: str | None = None
+    locked_at: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class LockPeriodIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    period_key: str = Field(pattern=r"^\d{4}-\d{2}$")
+    entity_id: str = DEFAULT_ENTITY_ID
+    actor_id: str | None = Field(default=None, min_length=1, max_length=128)
+    correlation_id: str
+
+    @field_validator("period_key")
+    @classmethod
+    def _validate_period_key_month(cls, value: str) -> str:
+        month = int(value.split("-")[1])
+        if month < 1 or month > 12:
+            raise ValueError("period_key month must be in 01..12")
+        return value
+
+
+class LockPeriodOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["locked", "already_locked"]
+    period_key: str
+    entity_id: str
+    state: Literal["locked"]
+    closed_at: str | None = None
+    locked_at: str | None = None
     correlation_id: str
     output_hash: str
 

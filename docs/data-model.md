@@ -6,6 +6,7 @@ As of 2026-02-15. Source migrations:
 - `migrations/0003_approval_gates.sql`
 - `migrations/0004_read_query_indexes.sql`
 - `migrations/0005_entity_dimension.sql`
+- `migrations/0006_periods_policies.sql`
 
 ## Canonical Tables
 
@@ -36,6 +37,8 @@ Key fields:
 - `parent_account_id TEXT REFERENCES accounts(account_id)`
 - `metadata TEXT NOT NULL DEFAULT '{}'`
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `is_adjusting_entry INTEGER NOT NULL DEFAULT 0`
+- `adjusting_reason_code TEXT`
 
 Constraints and guards:
 - Unique `code`.
@@ -56,6 +59,8 @@ Key fields:
 - `output_hash TEXT` (set after canonical response shaping)
 - `response_payload TEXT` (serialized canonical response)
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `matched_rule_id TEXT REFERENCES policy_rules(rule_id)`
+- `required_approvals INTEGER NOT NULL DEFAULT 1`
 
 Constraints and guards:
 - Unique `(source_system, external_id)` for idempotency.
@@ -171,9 +176,51 @@ Key fields:
 - `action TEXT CHECK IN ('approve','reject')`
 - `correlation_id TEXT NOT NULL`
 - `reason TEXT`
+- `approver_id TEXT`
 
 Constraints and guards:
 - Append-only update/delete blocked by triggers.
+- Unique distinct approver constraint for non-null `approver_id` on `(proposal_id, action, approver_id)`.
+
+## `accounting_periods`
+Purpose:
+- Canonical accounting period state for close/lock controls.
+
+Key fields:
+- `period_id TEXT PRIMARY KEY`
+- `period_key TEXT NOT NULL` (`YYYY-MM`)
+- `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `status TEXT CHECK IN ('open','closed','locked')`
+- `actor_id TEXT`
+- `correlation_id TEXT`
+- `closed_at TEXT`
+- `locked_at TEXT`
+
+Constraints:
+- Unique `(period_key, entity_id)`.
+
+## `policy_rules`
+Purpose:
+- Deterministic multi-dimensional policy matching for proposal gating.
+
+Key fields:
+- `rule_id TEXT PRIMARY KEY`
+- `priority INTEGER NOT NULL`
+- `tool_name TEXT`
+- `entity_id TEXT REFERENCES entities(entity_id)`
+- `transaction_category TEXT`
+- `risk_band TEXT`
+- `velocity_limit_count INTEGER`
+- `velocity_window_seconds INTEGER`
+- `threshold_amount NUMERIC NOT NULL`
+- `required_approvals INTEGER NOT NULL DEFAULT 1`
+- `active INTEGER NOT NULL DEFAULT 1`
+- `metadata TEXT NOT NULL DEFAULT '{}'`
+
+Constraints:
+- Stable evaluation order by `(priority ASC, rule_id ASC)`.
+- `required_approvals >= 1`.
+- Velocity fields must be provided together when used.
 
 ## Service-Layer Invariants
 - Balanced transaction bundles required before write:
@@ -181,6 +228,8 @@ Constraints and guards:
 - Monetary values normalized using round-half-even at 4 decimal places.
 - Transaction idempotency on `(source_system, external_id)` with deterministic replay response.
 - Above-threshold transaction requests produce deterministic proposal records and responses.
+- Period-closed writes require adjusting-entry tags.
+- Period-locked writes require explicit override + approval gating.
 - Approval commits and approval event logging are coupled in one DB transaction (fail-closed).
 
 ## Read/Write Boundary

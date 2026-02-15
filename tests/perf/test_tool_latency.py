@@ -7,6 +7,7 @@ import pytest
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_transaction_bundle
+from capital_os.domain.policy.service import evaluate_transaction_policy
 from capital_os.tools.analyze_debt import handle as analyze_debt
 from capital_os.tools.compute_capital_posture import handle as compute_capital_posture
 from capital_os.tools.simulate_spend import handle as simulate_spend
@@ -149,3 +150,49 @@ def test_analyze_debt_p95_under_300ms_reference_profile():
     assert len(set(output_hashes)) == 1
     p95 = statistics.quantiles(timings, n=20)[-1]
     assert p95 < 300
+
+
+@pytest.mark.performance
+def test_policy_evaluation_overhead_p95_under_50ms(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    with transaction() as conn:
+        conn.execute(
+            """
+            INSERT INTO policy_rules (
+              rule_id, priority, tool_name, transaction_category, risk_band,
+              threshold_amount, required_approvals, active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            """,
+            ("perf-policy-1", 1, "record_transaction_bundle", "ops", "medium", "10.0000", 1),
+        )
+
+    payload = {
+        "source_system": "pytest",
+        "external_id": "policy-perf-seed",
+        "date": "2026-01-15T00:00:00Z",
+        "description": "perf policy eval",
+        "entity_id": "entity-default",
+        "transaction_category": "ops",
+        "risk_band": "medium",
+        "postings": [],
+        "correlation_id": "corr-policy-perf",
+    }
+
+    timings = []
+    for _ in range(80):
+        start = time.perf_counter()
+        with transaction() as conn:
+            decision = evaluate_transaction_policy(
+                conn,
+                payload=payload,
+                impact_amount=Decimal("12.0000"),
+                tool_name="record_transaction_bundle",
+                force_approval=False,
+            )
+        timings.append((time.perf_counter() - start) * 1000)
+        assert decision.approval_required is True
+
+    p95 = statistics.quantiles(timings, n=20)[-1]
+    assert p95 < 50

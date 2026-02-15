@@ -12,6 +12,7 @@ As of 2026-02-15.
 - Epic 6 read/query foundation (Story 6.1) is implemented and in review.
 - Epic 7 reconciliation and truth policy tooling is implemented.
 - Epic 8 entity-dimension foundation (Story 8.1) is implemented and in review.
+- Epic 9 period controls and policy expansion are implemented.
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -36,6 +37,10 @@ As of 2026-02-15.
   - `8-1-entity-dimension-schema-migration`: `review`
   - `8-2-consolidated-posture-and-inter-entity-rules`: `ready-for-dev`
   - `8-3-multi-entity-scale-and-regression-tests`: `ready-for-dev`
+  - `epic-9`: `done`
+  - `9-1-period-close-lock-and-adjustments`: `done`
+  - `9-2-policy-engine-expansion`: `done`
+  - `9-3-multi-party-approval-and-latency-budget`: `done`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`
@@ -59,6 +64,8 @@ As of 2026-02-15.
   - `get_account_tree`
   - `get_account_balances`
   - `reconcile_account`
+  - `close_period`
+  - `lock_period`
 
 ## Domain and Persistence Modules
 - Accounts domain:
@@ -82,6 +89,10 @@ As of 2026-02-15.
   - `src/capital_os/domain/approval/policy.py`
   - `src/capital_os/domain/approval/repository.py`
   - `src/capital_os/domain/approval/service.py`
+- Period domain:
+  - `src/capital_os/domain/periods/service.py`
+- Policy domain:
+  - `src/capital_os/domain/policy/service.py`
 - Observability:
   - `src/capital_os/observability/hashing.py`
   - `src/capital_os/observability/event_log.py`
@@ -94,12 +105,14 @@ As of 2026-02-15.
 - Approval gates migration: `migrations/0003_approval_gates.sql`
 - Read query index migration: `migrations/0004_read_query_indexes.sql`
 - Entity dimension migration: `migrations/0005_entity_dimension.sql`
+- Period/policy expansion migration: `migrations/0006_periods_policies.sql`
 - Rollback scripts are present:
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
   - `migrations/0004_read_query_indexes.rollback.sql`
   - `migrations/0005_entity_dimension.rollback.sql`
+  - `migrations/0006_periods_policies.rollback.sql`
 - Migration reversibility check script:
   - `scripts/check_migration_cycle.py`
 
@@ -113,6 +126,8 @@ Implemented schema elements include:
 - `approval_proposals`
 - `approval_decisions`
 - `entities`
+- `accounting_periods`
+- `policy_rules`
 
 Implemented DB protections include:
 - Account cycle prevention triggers on `accounts`.

@@ -12,6 +12,8 @@ As of 2026-02-15.
 | `analyze_debt` | Same input yields identical ordering, explainability payload, and `output_hash` | `tests/unit/test_debt_engine.py`, `tests/integration/test_analyze_debt_tool.py`, `tests/replay/test_output_replay.py` |
 | `approve_proposed_transaction` | Re-approvals for same proposal replay canonical committed payload/hash | `tests/integration/test_approval_workflow.py`, `tests/replay/test_output_replay.py` |
 | `reject_proposed_transaction` | Repeat rejects replay canonical rejected payload/hash | `tests/integration/test_approval_workflow.py`, `tests/replay/test_output_replay.py` |
+| `close_period` | Repeat close calls return deterministic idempotent period-state responses | `tests/integration/test_period_policy_controls.py`, `tests/replay/test_output_replay.py` |
+| `lock_period` | Repeat lock calls return deterministic idempotent period-state responses | `tests/integration/test_period_policy_controls.py`, `tests/replay/test_output_replay.py` |
 | `list_accounts` | Same state/input returns stable page order, cursor behavior, and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
 | `get_account_tree` | Same state/input returns stable hierarchy ordering and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
 | `get_account_balances` | Same state/input returns stable source-policy balances and `output_hash` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py` |
@@ -26,3 +28,4 @@ Detailed SC/FR/NFR mapping lives in `docs/traceability-matrix.md`.
 - Full pytest suite: `.github/workflows/ci.yml` job `tests`.
 - Migration apply/rollback/re-apply gate: `.github/workflows/ci.yml` job `migration-reversibility`.
 - Replay/hash determinism regression gate: `.github/workflows/ci.yml` job `determinism-regression`.
+- Performance regression gate includes policy-evaluation overhead p95 `<50ms`: `tests/perf/test_tool_latency.py`.

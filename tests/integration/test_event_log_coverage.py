@@ -368,3 +368,55 @@ def test_reconcile_account_success_and_validation_failures_logged(db_available):
     assert rows[1]["correlation_id"] == "corr-recon-evt-invalid"
     assert rows[1]["input_hash"]
     assert rows[1]["output_hash"]
+
+
+def test_period_tools_success_and_validation_failures_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+
+    assert (
+        client.post(
+            "/tools/close_period",
+            json={"period_key": "2026-02", "actor_id": "controller-a", "correlation_id": "corr-close-evt-ok"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/tools/lock_period",
+            json={"period_key": "invalid", "correlation_id": "corr-lock-evt-invalid"},
+        ).status_code
+        == 422
+    )
+
+    with transaction() as conn:
+        close_rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='close_period'
+            ORDER BY created_at
+            """
+        ).fetchall()
+        lock_rows = conn.execute(
+            """
+            SELECT correlation_id, status, input_hash, output_hash
+            FROM event_log
+            WHERE tool_name='lock_period'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+    assert len(close_rows) == 1
+    assert close_rows[0]["status"] == "ok"
+    assert close_rows[0]["correlation_id"] == "corr-close-evt-ok"
+    assert close_rows[0]["input_hash"]
+    assert close_rows[0]["output_hash"]
+
+    assert len(lock_rows) == 1
+    assert lock_rows[0]["status"] == "validation_error"
+    assert lock_rows[0]["correlation_id"] == "corr-lock-evt-invalid"
+    assert lock_rows[0]["input_hash"]
+    assert lock_rows[0]["output_hash"]

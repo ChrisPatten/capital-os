@@ -68,14 +68,16 @@ def insert_proposal(
     impact_amount: str,
     request_payload: dict[str, Any],
     entity_id: str | None = None,
+    matched_rule_id: str | None = None,
+    required_approvals: int = 1,
 ) -> str:
     proposal_id = str(uuid4())
     conn.execute(
         """
         INSERT INTO approval_proposals (
           proposal_id, tool_name, source_system, external_id, correlation_id,
-          input_hash, policy_threshold_amount, impact_amount, request_payload, status, entity_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,'proposed',?)
+          input_hash, policy_threshold_amount, impact_amount, request_payload, status, entity_id, matched_rule_id, required_approvals
+        ) VALUES (?,?,?,?,?,?,?,?,?,'proposed',?,?,?)
         """,
         (
             proposal_id,
@@ -88,6 +90,8 @@ def insert_proposal(
             impact_amount,
             canonical_json(request_payload),
             entity_id or DEFAULT_ENTITY_ID,
+            matched_rule_id,
+            max(1, required_approvals),
         ),
     )
     return proposal_id
@@ -125,13 +129,46 @@ def persist_proposal_result(
 
 
 
-def insert_decision(conn, *, proposal_id: str, action: str, correlation_id: str, reason: str | None) -> str:
+def insert_decision(
+    conn,
+    *,
+    proposal_id: str,
+    action: str,
+    correlation_id: str,
+    reason: str | None,
+    approver_id: str | None = None,
+) -> str:
     decision_id = str(uuid4())
     conn.execute(
         """
-        INSERT INTO approval_decisions (decision_id, proposal_id, action, correlation_id, reason)
-        VALUES (?,?,?,?,?)
+        INSERT INTO approval_decisions (decision_id, proposal_id, action, correlation_id, reason, approver_id)
+        VALUES (?,?,?,?,?,?)
         """,
-        (decision_id, proposal_id, action, correlation_id, reason),
+        (decision_id, proposal_id, action, correlation_id, reason, approver_id),
     )
     return decision_id
+
+
+def has_approver_decision(conn, *, proposal_id: str, action: str, approver_id: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1 AS has_decision
+        FROM approval_decisions
+        WHERE proposal_id=? AND action=? AND approver_id=?
+        LIMIT 1
+        """,
+        (proposal_id, action, approver_id),
+    ).fetchone()
+    return bool(row)
+
+
+def count_distinct_approvers(conn, *, proposal_id: str, action: str) -> int:
+    row = conn.execute(
+        """
+        SELECT COUNT(DISTINCT approver_id) AS c
+        FROM approval_decisions
+        WHERE proposal_id=? AND action=? AND approver_id IS NOT NULL
+        """,
+        (proposal_id, action),
+    ).fetchone()
+    return int(row["c"])

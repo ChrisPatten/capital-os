@@ -20,7 +20,9 @@ As of 2026-02-15.
   - `migrations/0003_approval_gates.sql`
   - `migrations/0004_read_query_indexes.sql`
   - `migrations/0005_entity_dimension.sql`
+  - `migrations/0006_periods_policies.sql`
 - Rollback scripts exist for each forward migration:
+  - `migrations/0006_periods_policies.rollback.sql`
   - `migrations/0005_entity_dimension.rollback.sql`
   - `migrations/0004_read_query_indexes.rollback.sql`
   - `migrations/0003_approval_gates.rollback.sql`
@@ -57,6 +59,7 @@ Current test coverage areas:
   - Read-only DB connection cannot mutate ledger tables.
 - Performance:
   - p95 smoke tests for `record_transaction_bundle`, `compute_capital_posture`, and `simulate_spend`.
+  - p95 policy evaluation overhead gate (`<50ms`).
 
 ## CI Workflow
 - Workflow file: `.github/workflows/ci.yml`
@@ -81,3 +84,4 @@ Execution order for agents:
 ## Current Priority Queue
 From `sprint-status.yaml` on 2026-02-15:
 - Epics 1-5 stories: `done`.
+- Epic 9 stories (`9-1`..`9-3`): `done`.

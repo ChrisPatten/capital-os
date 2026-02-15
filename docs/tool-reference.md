@@ -22,9 +22,16 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Enforces balanced postings (`sum(amount) == 0` after 4dp normalization).
 - Uses idempotency key `(source_system, external_id)`.
 - Supports optional `entity_id` (defaults to `entity-default`).
+- Supports policy dimensions in request payload:
+  - `transaction_category`
+  - `risk_band`
+- Supports period-control fields:
+  - `is_adjusting_entry`, `adjusting_reason_code`
+  - `override_period_lock`, `override_reason`
 - Writes transaction + postings in one DB transaction.
 - Persists canonical response payload and output hash for replay.
-- Enforces approval policy threshold for high-impact transactions.
+- Enforces expanded approval policy rules (threshold + category/entity/velocity/risk-band/tool matching).
+- Enforces closed/locked period constraints prior to mutation.
 - Returns:
   - `status = "committed"` on first commit.
   - `status = "idempotent-replay"` on duplicate key replay.
@@ -111,6 +118,8 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 
 ### Behavior
 - Approves previously proposed `record_transaction_bundle` requests.
+- Supports optional multi-party approvals using `approver_id` when proposal requires quorum.
+- Returns intermediate `status = "proposed"` until required approvals are satisfied.
 - Commits exactly one canonical transaction under concurrent duplicate approval attempts.
 - Returns deterministic replay-safe canonical result for duplicate retries.
 - Logs success and validation failures.
@@ -125,6 +134,34 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Rejects previously proposed `record_transaction_bundle` requests without mutating ledger transactions/postings.
 - Supports deterministic idempotent replay behavior on duplicate reject attempts.
 - Logs success and validation failures.
+
+## `close_period`
+- Handler: `src/capital_os/tools/close_period.py`
+- Domain service: `src/capital_os/domain/periods/service.py::close_period`
+- Input schema: `ClosePeriodIn`
+- Output schema: `ClosePeriodOut`
+
+### Behavior
+- Closes an accounting period by `period_key` and `entity_id`.
+- Idempotent:
+  - first close returns `status = "closed"`
+  - repeat close returns `status = "already_closed"`
+  - close after lock returns `status = "already_locked"`
+- Emits event logs for success and validation failures.
+
+## `lock_period`
+- Handler: `src/capital_os/tools/lock_period.py`
+- Domain service: `src/capital_os/domain/periods/service.py::lock_period`
+- Input schema: `LockPeriodIn`
+- Output schema: `LockPeriodOut`
+
+### Behavior
+- Locks an accounting period by `period_key` and `entity_id`.
+- Idempotent:
+  - first lock returns `status = "locked"`
+  - repeat lock returns `status = "already_locked"`
+- Locked periods block back-dated writes unless explicit override path is used and policy approval conditions are met.
+- Emits event logs for success and validation failures.
 
 ## `list_accounts`
 - Handler: `src/capital_os/tools/list_accounts.py`

@@ -44,6 +44,7 @@ This document maps PRD criteria to implementation and executable coverage.
 | NFR-05 | Safety/isolation (no outbound network) | Service-only architecture | N/A | Gap | Remediation: add explicit no-egress runtime test and CI network policy.
 | NFR-06 | Reversible migrations in CI | `migrations/*.sql`, `migrations/*.rollback.sql`, `scripts/check_migration_cycle.py`, `.github/workflows/ci.yml` | CI `migration-reversibility` job | Covered | Apply -> rollback -> re-apply enforced in CI.
 | NFR-07 | Financial math branch coverage target | Unit test modules under `tests/unit/` | Existing unit suite | Gap | Remediation: add coverage tooling + branch threshold gate.
+| NFR-12 | Policy engine latency overhead <50ms p95 | `src/capital_os/domain/policy/service.py` | `tests/perf/test_tool_latency.py::test_policy_evaluation_overhead_p95_under_50ms` | Covered | Measured as policy evaluation overhead gate.
 
 ## Remediation Backlog (Open Gaps)
 
@@ -60,3 +61,7 @@ This document maps PRD criteria to implementation and executable coverage.
 | FR-15 | Query account balances with source policy controls | `src/capital_os/tools/get_account_balances.py`, `src/capital_os/domain/query/service.py`, `src/capital_os/domain/ledger/repository.py` | `tests/integration/test_read_query_tools.py`, `tests/replay/test_read_query_replay.py`, `tests/integration/test_tool_contract_validation.py` | Covered |
 | FR-19 | Reconcile account balances with proposed-only adjustments | `src/capital_os/tools/reconcile_account.py`, `src/capital_os/domain/reconciliation/service.py`, `src/capital_os/domain/ledger/repository.py` | `tests/integration/test_reconcile_account_tool.py`, `tests/replay/test_reconciliation_replay.py` | Covered |
 | FR-20 | Configurable truth-selection policy wiring | `src/capital_os/config.py`, `src/capital_os/domain/query/service.py`, `src/capital_os/tools/get_account_balances.py` | `tests/integration/test_read_query_tools.py`, `tests/integration/test_tool_contract_validation.py` | Covered |
+| FR-24 | Period close controls and adjusting-entry governance | `src/capital_os/domain/periods/service.py`, `src/capital_os/tools/close_period.py`, `src/capital_os/domain/ledger/service.py`, `src/capital_os/schemas/tools.py` | `tests/integration/test_period_policy_controls.py`, `tests/integration/test_tool_contract_validation.py` | Covered |
+| FR-25 | Period lock controls and override gating | `src/capital_os/domain/periods/service.py`, `src/capital_os/tools/lock_period.py`, `src/capital_os/domain/ledger/service.py` | `tests/integration/test_period_policy_controls.py`, `tests/integration/test_event_log_coverage.py` | Covered |
+| FR-26 | Expanded policy engine dimensions | `src/capital_os/domain/policy/service.py`, `migrations/0006_periods_policies.sql` | `tests/integration/test_period_policy_controls.py`, `tests/perf/test_tool_latency.py` | Covered |
+| FR-27 | Multi-party approval workflow semantics | `src/capital_os/domain/approval/service.py`, `src/capital_os/domain/approval/repository.py`, `migrations/0006_periods_policies.sql` | `tests/integration/test_period_policy_controls.py`, `tests/integration/test_approval_workflow.py` | Covered |

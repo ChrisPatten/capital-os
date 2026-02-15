@@ -31,8 +31,9 @@ def insert_transaction_bundle(conn, payload: dict[str, Any]) -> tuple[str, list[
     conn.execute(
         """
         INSERT INTO ledger_transactions (
-            transaction_id, source_system, external_id, transaction_date, description, correlation_id, input_hash, entity_id
-        ) VALUES (?,?,?,?,?,?,?,?)
+            transaction_id, source_system, external_id, transaction_date, description, correlation_id, input_hash, entity_id,
+            is_adjusting_entry, adjusting_reason_code
+        ) VALUES (?,?,?,?,?,?,?,?,?,?)
         """,
         (
             tx_id,
@@ -43,6 +44,8 @@ def insert_transaction_bundle(conn, payload: dict[str, Any]) -> tuple[str, list[
             payload["correlation_id"],
             payload["input_hash"],
             payload.get("entity_id", DEFAULT_ENTITY_ID),
+            1 if payload.get("is_adjusting_entry", False) else 0,
+            payload.get("adjusting_reason_code"),
         ),
     )
     posting_ids: list[str] = []

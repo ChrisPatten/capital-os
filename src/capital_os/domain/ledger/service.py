@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from time import perf_counter
 import sqlite3
 
-from capital_os.domain.approval.policy import load_approval_policy, transaction_impact_amount
+from capital_os.domain.approval.policy import transaction_impact_amount
 from capital_os.domain.approval.repository import (
     fetch_proposal_by_source_external,
     insert_proposal,
     persist_proposal_result,
 )
+from capital_os.domain.entities import DEFAULT_ENTITY_ID
+from capital_os.domain.periods.service import enforce_period_write_constraints
+from capital_os.domain.policy.service import evaluate_transaction_policy
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.idempotency import resolve_transaction_idempotency
 from capital_os.domain.ledger.invariants import InvariantError, ensure_balanced, normalize_amount
@@ -34,6 +36,9 @@ def _proposal_response_payload(proposal: dict) -> dict:
         "correlation_id": proposal["correlation_id"],
         "approval_threshold_amount": str(normalize_amount(proposal["policy_threshold_amount"])),
         "impact_amount": str(normalize_amount(proposal["impact_amount"])),
+        "matched_rule_id": proposal.get("matched_rule_id"),
+        "required_approvals": int(proposal.get("required_approvals") or 1),
+        "approvals_received": 0,
     }
     response["output_hash"] = payload_hash(response)
     return response
@@ -46,9 +51,7 @@ def record_transaction_bundle(payload: dict) -> dict:
     if any(p["currency"] != "USD" for p in payload["postings"]):
         raise InvariantError("Only USD is supported in phase 1")
     ensure_balanced(payload["postings"])
-    policy = load_approval_policy()
     impact_amount = transaction_impact_amount(payload["postings"])
-    approval_required = impact_amount > policy.threshold_amount
 
     try:
         with transaction() as conn:
@@ -67,7 +70,18 @@ def record_transaction_bundle(payload: dict) -> dict:
                 replay["output_hash"] = output_hash
                 return replay
 
-            if approval_required:
+            tx_payload = dict(payload)
+            tx_payload.setdefault("entity_id", DEFAULT_ENTITY_ID)
+            force_approval = enforce_period_write_constraints(conn, tx_payload)
+            policy_decision = evaluate_transaction_policy(
+                conn,
+                payload=tx_payload,
+                impact_amount=impact_amount,
+                tool_name="record_transaction_bundle",
+                force_approval=force_approval,
+            )
+
+            if policy_decision.approval_required:
                 proposal = fetch_proposal_by_source_external(
                     conn,
                     tool_name="record_transaction_bundle",
@@ -82,10 +96,12 @@ def record_transaction_bundle(payload: dict) -> dict:
                         external_id=payload["external_id"],
                         correlation_id=payload["correlation_id"],
                         input_hash=input_hash,
-                        policy_threshold_amount=str(policy.threshold_amount),
+                        policy_threshold_amount=str(policy_decision.threshold_amount),
                         impact_amount=str(impact_amount),
-                        request_payload=payload,
-                        entity_id=payload.get("entity_id"),
+                        request_payload=tx_payload,
+                        entity_id=tx_payload.get("entity_id"),
+                        matched_rule_id=policy_decision.matched_rule_id,
+                        required_approvals=policy_decision.required_approvals,
                     )
                     proposal = fetch_proposal_by_source_external(
                         conn,
@@ -117,7 +133,6 @@ def record_transaction_bundle(payload: dict) -> dict:
                 )
                 return response
 
-            tx_payload = dict(payload)
             tx_payload["input_hash"] = input_hash
             transaction_id, posting_ids = insert_transaction_bundle(conn, tx_payload)
             response = {

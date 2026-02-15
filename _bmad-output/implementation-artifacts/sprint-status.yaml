@@ -89,10 +89,10 @@ development_status:
   8-3-multi-entity-scale-and-regression-tests: ready-for-dev
   epic-8-retrospective: optional
 
-  epic-9: backlog
-  9-1-period-close-lock-and-adjustments: backlog
-  9-2-policy-engine-expansion: backlog
-  9-3-multi-party-approval-and-latency-budget: backlog
+  epic-9: done
+  9-1-period-close-lock-and-adjustments: done
+  9-2-policy-engine-expansion: done
+  9-3-multi-party-approval-and-latency-budget: done
   epic-9-retrospective: optional
 
   epic-10: backlog

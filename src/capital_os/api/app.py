@@ -12,11 +12,13 @@ from capital_os.observability.hashing import payload_hash
 from capital_os.tools import (
     analyze_debt,
     approve_proposed_transaction,
+    close_period,
     compute_capital_posture,
     create_or_update_obligation,
     get_account_balances,
     get_account_tree,
     list_accounts,
+    lock_period,
     reconcile_account,
     record_balance_snapshot,
     record_transaction_bundle,
@@ -39,6 +41,8 @@ TOOL_HANDLERS = {
     "get_account_tree": get_account_tree.handle,
     "get_account_balances": get_account_balances.handle,
     "reconcile_account": reconcile_account.handle,
+    "close_period": close_period.handle,
+    "lock_period": lock_period.handle,
 }
 
 

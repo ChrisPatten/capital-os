@@ -121,3 +121,27 @@ def test_reconcile_account_invalid_payload_returns_deterministic_error_shape(db_
     detail = response.json()["detail"]
     assert detail["error"] == "validation_error"
     assert isinstance(detail["details"], list)
+
+
+def test_period_tools_invalid_payload_returns_deterministic_error_shape(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    close_response = client.post(
+        "/tools/close_period",
+        json={"period_key": "2026-13", "correlation_id": "corr-close-invalid"},
+    )
+    assert close_response.status_code == 422
+    close_detail = close_response.json()["detail"]
+    assert close_detail["error"] == "validation_error"
+    assert isinstance(close_detail["details"], list)
+
+    lock_response = client.post(
+        "/tools/lock_period",
+        json={"correlation_id": "corr-lock-invalid"},
+    )
+    assert lock_response.status_code == 422
+    lock_detail = lock_response.json()["detail"]
+    assert lock_detail["error"] == "validation_error"
+    assert isinstance(lock_detail["details"], list)

@@ -8,6 +8,8 @@ from capital_os.db.session import transaction
 from capital_os.domain.approval.service import approve_proposed_transaction, reject_proposed_transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_transaction_bundle
+from capital_os.tools.close_period import handle as close_period_tool
+from capital_os.tools.lock_period import handle as lock_period_tool
 from capital_os.tools.analyze_debt import handle as analyze_debt_tool
 from capital_os.tools.compute_capital_posture import handle as compute_capital_posture_tool
 from capital_os.tools.simulate_spend import handle as simulate_spend_tool
@@ -217,3 +219,23 @@ def test_approval_tools_output_hash_reproducible_on_replay(db_available, monkeyp
 
     assert first_reject["output_hash"] == second_reject["output_hash"]
     assert first_reject == second_reject
+
+
+def test_period_tools_output_hash_reproducible_on_replay(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    payload = {"period_key": "2026-03", "actor_id": "controller-a", "correlation_id": "corr-close-replay"}
+    first_close = close_period_tool(payload).model_dump(mode="json")
+    second_close = close_period_tool(payload).model_dump(mode="json")
+
+    assert first_close["output_hash"] != second_close["output_hash"]
+    assert second_close["status"] == "already_closed"
+
+    lock_payload = {"period_key": "2026-03", "actor_id": "controller-a", "correlation_id": "corr-lock-replay"}
+    first_lock = lock_period_tool(lock_payload).model_dump(mode="json")
+    second_lock = lock_period_tool(lock_payload).model_dump(mode="json")
+
+    assert first_lock["status"] == "locked"
+    assert second_lock["status"] == "already_locked"
+    assert first_lock["state"] == second_lock["state"] == "locked"

@@ -3,6 +3,8 @@
 Date: 2026-02-15
 Scope: Close remaining gaps between implemented ledger-core slice and full `initial_prd.md` Phase 1 outcomes.
 
+Update (2026-02-15): PRD delta requirements from `prd_update_0215.md` are tracked in `docs/backlog-phase1-delta-0215.md` and supersede this file for new agent-enablement scope.
+
 ## Execution Status Snapshot (2026-02-15)
 - Epic E1 (Capital Posture): implemented.
 - Epic E2 (Spend Simulation): implemented.

@@ -1,6 +1,6 @@
 # Testing Matrix
 
-As of 2026-02-14. This maps PRD success criteria/FR/NFR items to current tests.
+As of 2026-02-15. This maps PRD success criteria/FR/NFR items to current tests.
 
 ## Success Criteria Coverage
 
@@ -25,7 +25,7 @@ As of 2026-02-14. This maps PRD success criteria/FR/NFR items to current tests.
 | FR-05 | Track obligations | Implemented (limited direct integration assertions) | `src/capital_os/domain/ledger/service.py`, `src/capital_os/tools/create_or_update_obligation.py` |
 | FR-06 | Compute capital posture | Implemented + tested | `tests/unit/test_posture_engine.py`, `tests/integration/test_event_log_coverage.py` |
 | FR-07 | Simulate spend (non-mutating) | Implemented + tested | `tests/unit/test_simulation_engine.py`, `tests/integration/test_simulation_non_mutation.py`, `tests/integration/test_tool_contract_validation.py` |
-| FR-08 | Debt optimization analysis | Not implemented | Epic 3 backlog |
+| FR-08 | Debt optimization analysis | Implemented + tested | `tests/unit/test_debt_engine.py`, `tests/integration/test_analyze_debt_tool.py`, `tests/replay/test_output_replay.py` |
 | FR-09 | Structured tool API validation | Implemented + tested | `tests/integration/test_tool_contract_validation.py` |
 | FR-10 | Tool invocation logging | Implemented + tested | `tests/integration/test_event_log_coverage.py` |
 | FR-11 | Approval gates for high-impact writes | Not implemented | Epic 4 backlog |

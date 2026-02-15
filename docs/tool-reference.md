@@ -1,6 +1,6 @@
 # Tool Reference
 
-As of 2026-02-14, the service exposes `POST /tools/{tool_name}` in `src/capital_os/api/app.py`.
+As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_os/api/app.py`.
 
 ## Common Contract Notes
 - Input validation is done with Pydantic schemas in `src/capital_os/schemas/tools.py`.
@@ -80,9 +80,28 @@ As of 2026-02-14, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Produces deterministic `output_hash` over canonical response payload.
 - Persists event log entries for successful calls.
 
+## `analyze_debt`
+- Handler: `src/capital_os/tools/analyze_debt.py`
+- Engine: `src/capital_os/domain/debt/engine.py`
+- Input schema: `AnalyzeDebtIn`
+- Output schema: `AnalyzeDebtOut`
+
+### Behavior
+- Non-mutating debt prioritization tool with deterministic ranking.
+- Supports optional sensitivity branch via `optional_payoff_amount`.
+- Returns per-liability score explanations:
+  - `annual_interest_cost`
+  - `cashflow_pressure`
+  - `payoff_readiness`
+- Applies deterministic tie-break ordering for equal score scenarios.
+- Rejects secret-like liability identifiers and forbids unknown payload keys.
+- Produces deterministic `output_hash` over canonical response payload.
+- Persists event log entries for successful calls.
+
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.
 - Validation failure: HTTP `422` deterministic detail payload, with event logging attempt.
+- Validation payloads are sanitized to avoid echoing raw input values.
 - Tool execution failure: HTTP `400`, `{"error":"tool_execution_error","message":...}`.
 - Health failure: HTTP `503` from `/health`.
 

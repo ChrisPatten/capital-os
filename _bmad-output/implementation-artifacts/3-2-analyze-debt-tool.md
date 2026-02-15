@@ -1,6 +1,6 @@
 # Story 3.2: Analyze Debt Tool
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -18,17 +18,17 @@ so that debt prioritization can be invoked deterministically via the Capital OS 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `analyze_debt` schemas (AC: 1, 3)
-  - [ ] Extend `src/capital_os/schemas/tools.py` with debt request/response models.
-  - [ ] Model optional payoff sensitivity inputs explicitly.
-- [ ] Task 2: Add tool handler/service wiring (AC: 2, 3, 4)
-  - [ ] Create `src/capital_os/tools/analyze_debt.py`.
-  - [ ] Delegate to debt domain service and return deterministic output.
-- [ ] Task 3: Wire API route and logging (AC: 2, 5)
-  - [ ] Update `src/capital_os/api/app.py` tool registry.
-  - [ ] Verify success/failure event logging coverage.
-- [ ] Task 4: Add validation/integration tests (AC: 1, 5)
-  - [ ] Extend contract validation tests and event log coverage tests.
+- [x] Task 1: Add `analyze_debt` schemas (AC: 1, 3)
+  - [x] Extend `src/capital_os/schemas/tools.py` with debt request/response models.
+  - [x] Model optional payoff sensitivity inputs explicitly.
+- [x] Task 2: Add tool handler/service wiring (AC: 2, 3, 4)
+  - [x] Create `src/capital_os/tools/analyze_debt.py`.
+  - [x] Delegate to debt domain service and return deterministic output.
+- [x] Task 3: Wire API route and logging (AC: 2, 5)
+  - [x] Update `src/capital_os/api/app.py` tool registry.
+  - [x] Verify success/failure event logging coverage.
+- [x] Task 4: Add validation/integration tests (AC: 1, 5)
+  - [x] Extend contract validation tests and event log coverage tests.
 
 ## Dev Notes
 
@@ -59,7 +59,7 @@ so that debt prioritization can be invoked deterministically via the Capital OS 
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -67,8 +67,14 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added `AnalyzeDebtIn`/`AnalyzeDebtOut` tool contracts with deterministic decimal normalization.
+- Implemented `analyze_debt` tool handler and wired it into `POST /tools/{tool_name}` registry.
+- Added integration coverage for success path, validation failures, event logging, and hash determinism.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/3-2-analyze-debt-tool.md`
+- `src/capital_os/schemas/tools.py`
+- `src/capital_os/tools/analyze_debt.py`
+- `src/capital_os/api/app.py`
+- `tests/integration/test_analyze_debt_tool.py`

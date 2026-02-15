@@ -7,6 +7,7 @@ import pytest
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_transaction_bundle
+from capital_os.tools.analyze_debt import handle as analyze_debt
 from capital_os.tools.compute_capital_posture import handle as compute_capital_posture
 from capital_os.tools.simulate_spend import handle as simulate_spend
 
@@ -114,6 +115,37 @@ def test_simulate_spend_p95_under_300ms_reference_profile():
         assert response.periods[0].period_start.isoformat() == "2026-01-01"
 
     # Repeat-run equality is an anti-flake guard for CI.
+    assert len(set(output_hashes)) == 1
+    p95 = statistics.quantiles(timings, n=20)[-1]
+    assert p95 < 300
+
+
+@pytest.mark.performance
+def test_analyze_debt_p95_under_300ms_reference_profile():
+    timings = []
+    output_hashes: list[str] = []
+    payload = {
+        "liabilities": [
+            {
+                "liability_id": f"liability-{i:04d}",
+                "current_balance": str(Decimal("1500.0000") + Decimal(i)),
+                "apr": str(Decimal("4.5000") + (Decimal(i % 17) / Decimal("10.0000"))),
+                "minimum_payment": str(Decimal("45.0000") + (Decimal(i % 13) * Decimal("3.0000"))),
+            }
+            for i in range(400)
+        ],
+        "optional_payoff_amount": "25000.0000",
+        "reserve_floor": "10000.0000",
+        "correlation_id": "corr-debt-perf",
+    }
+
+    for _ in range(40):
+        start = time.perf_counter()
+        response = analyze_debt(payload)
+        timings.append((time.perf_counter() - start) * 1000)
+        output_hashes.append(response.output_hash)
+        assert response.ranked_liabilities[0].rank == 1
+
     assert len(set(output_hashes)) == 1
     p95 = statistics.quantiles(timings, n=20)[-1]
     assert p95 < 300

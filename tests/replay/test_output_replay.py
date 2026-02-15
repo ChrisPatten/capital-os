@@ -7,6 +7,7 @@ from capital_os.domain.posture.engine import (
     PostureComputationInputs,
     compute_posture_metrics_with_hash,
 )
+from capital_os.domain.debt.engine import DebtAnalysisInputs, analyze_liabilities_with_hash
 
 
 def test_output_hash_reproducible_for_same_input(db_available):
@@ -50,3 +51,25 @@ def test_posture_engine_output_hash_reproducible_for_same_input():
     assert first == second
     assert list(first["explanation"].keys()) == ["contributing_balances", "reserve_assumptions"]
     assert first["explanation"]["contributing_balances"][0]["name"] == "liquidity"
+
+
+def test_debt_engine_output_hash_reproducible_for_same_input():
+    payload = DebtAnalysisInputs(
+        liabilities=[
+            {"liability_id": "loan-a", "current_balance": "5000.0000", "apr": "19.5000", "minimum_payment": "130.0000"},
+            {"liability_id": "loan-b", "current_balance": "9000.0000", "apr": "7.2500", "minimum_payment": "240.0000"},
+        ],
+        optional_payoff_amount="1500.0000",
+        reserve_floor="3000.0000",
+    )
+
+    first = analyze_liabilities_with_hash(payload)
+    second = analyze_liabilities_with_hash(payload)
+
+    assert first["output_hash"] == second["output_hash"]
+    assert first == second
+    assert list(first["ranked_liabilities"][0]["explanation"].keys()) == [
+        "annual_interest_cost",
+        "cashflow_pressure",
+        "payoff_readiness",
+    ]

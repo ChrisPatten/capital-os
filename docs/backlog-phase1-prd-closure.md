@@ -1,12 +1,13 @@
 # Capital OS Backlog: Phase 1 PRD Closure
 
-Date: 2026-02-14
+Date: 2026-02-15
 Scope: Close remaining gaps between implemented ledger-core slice and full `initial_prd.md` Phase 1 outcomes.
 
-## Execution Status Snapshot (2026-02-14)
+## Execution Status Snapshot (2026-02-15)
 - Epic E1 (Capital Posture): implemented.
 - Epic E2 (Spend Simulation): implemented.
-- Epics E3-E5: backlog/ready-for-dev per `_bmad-output/implementation-artifacts/sprint-status.yaml`.
+- Epic E3 (Debt Analysis): implemented.
+- Epics E4-E5: backlog/ready-for-dev per `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
 ## Prioritization Logic
 - Build deterministic read/computation foundation first.
@@ -183,9 +184,8 @@ Dependencies:
 ## Recommended Execution Order (Critical Path)
 1. E1 Capital Posture (P0)
 2. E2 Spend Simulation (P1)
-3. E3 Debt Analysis (P1)
-4. E5 CI/DoD Hardening (P1, starts in parallel after E1 baseline)
-5. E4 Approval-Gated Writes (P2, after projection tools stabilize)
+3. E5 CI/DoD Hardening (P1, starts in parallel after E1 baseline)
+4. E4 Approval-Gated Writes (P2, after projection tools stabilize)
 
 ## Definition of “Backlog Complete”
 - All stories have owners, estimates, and acceptance tests linked.

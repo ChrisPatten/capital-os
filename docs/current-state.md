@@ -1,12 +1,13 @@
 # Current Implementation State
 
-As of 2026-02-14.
+As of 2026-02-15.
 
 ## Delivery Snapshot
 - Runtime stack is active: Python 3.11+, FastAPI transport, SQLite canonical store, Pytest suite.
 - Ledger core foundations are implemented: accounts, transactions/postings, snapshots, obligations, event log, hashing, idempotency.
 - Capital posture tooling from Epic 1 is implemented and tested.
 - Spend simulation tooling from Epic 2 is implemented and tested.
+- Debt analysis tooling from Epic 3 is implemented and tested.
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -15,7 +16,10 @@ As of 2026-02-14.
   - `2-1-simulation-engine`: `done`
   - `2-2-simulate-spend-tool-contract-and-logging`: `done`
   - `2-3-simulation-performance-guardrails`: `done`
-  - Epics 3-5: `in-progress` (stories currently `ready-for-dev`)
+  - `3-1-liability-analytics-model`: `done`
+  - `3-2-analyze-debt-tool`: `done`
+  - `3-3-debt-scenario-explainability`: `done`
+  - Epics 4-5: `in-progress` (stories currently `ready-for-dev`)
 
 ## Implemented Service Surface
 - API entrypoint: `src/capital_os/api/app.py`
@@ -28,6 +32,7 @@ As of 2026-02-14.
   - `create_or_update_obligation`
   - `compute_capital_posture`
   - `simulate_spend`
+  - `analyze_debt`
 
 ## Domain and Persistence Modules
 - Accounts domain:
@@ -44,6 +49,9 @@ As of 2026-02-14.
 - Simulation domain:
   - `src/capital_os/domain/simulation/engine.py`
   - `src/capital_os/domain/simulation/service.py`
+- Debt domain:
+  - `src/capital_os/domain/debt/engine.py`
+  - `src/capital_os/domain/debt/service.py`
 - Observability:
   - `src/capital_os/observability/hashing.py`
   - `src/capital_os/observability/event_log.py`
@@ -83,6 +91,5 @@ Implemented DB protections include:
 - Some append-only enforcement allows one controlled update on `ledger_transactions` to persist `response_payload` and `output_hash` post-insert (intended for idempotent replay support).
 
 ## Not Implemented Yet (Backlog)
-- Epic 3: debt optimization analysis.
 - Epic 4: approval-gated write workflow.
 - Epic 5: traceability matrix and CI hardening work.

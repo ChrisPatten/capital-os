@@ -4,7 +4,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from capital_os.domain.ledger.invariants import normalize_amount
 
 
 class PostingIn(BaseModel):
@@ -163,5 +165,107 @@ class SimulateSpendOut(BaseModel):
 
     starting_liquidity: Decimal
     periods: list[SimulateSpendPeriodOut]
+    correlation_id: str
+    output_hash: str
+
+
+class AnalyzeDebtLiabilityIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    liability_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+    current_balance: Decimal
+    apr: Decimal
+    minimum_payment: Decimal
+
+    @field_validator("liability_id")
+    @classmethod
+    def _reject_secret_like_ids(cls, value: str) -> str:
+        lowered = value.lower()
+        blocked_tokens = ("secret", "token", "password", "api_key", "apikey")
+        if any(token in lowered for token in blocked_tokens):
+            raise ValueError("liability_id contains disallowed secret-like text")
+        return value
+
+    @field_validator("current_balance", "apr", "minimum_payment", mode="before")
+    @classmethod
+    def _normalize_decimal(cls, value: Decimal | str) -> Decimal:
+        normalized = normalize_amount(value)
+        if normalized < Decimal("0.0000"):
+            raise ValueError("value must be non-negative")
+        return normalized
+
+
+class AnalyzeDebtIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    liabilities: list[AnalyzeDebtLiabilityIn] = Field(min_length=1)
+    optional_payoff_amount: Decimal | None = None
+    reserve_floor: Decimal = Decimal("0.0000")
+    correlation_id: str
+
+    @field_validator("optional_payoff_amount", "reserve_floor", mode="before")
+    @classmethod
+    def _normalize_optional_decimal(cls, value: Decimal | str | None) -> Decimal | None:
+        if value is None:
+            return None
+        normalized = normalize_amount(value)
+        if normalized < Decimal("0.0000"):
+            raise ValueError("value must be non-negative")
+        return normalized
+
+    @field_validator("liabilities")
+    @classmethod
+    def _validate_unique_liability_ids(
+        cls, liabilities: list[AnalyzeDebtLiabilityIn]
+    ) -> list[AnalyzeDebtLiabilityIn]:
+        ids = [liability.liability_id for liability in liabilities]
+        if len(set(ids)) != len(ids):
+            raise ValueError("liability_id values must be unique")
+        return liabilities
+
+    @model_validator(mode="after")
+    def _normalize_defaults(self) -> "AnalyzeDebtIn":
+        if self.optional_payoff_amount is not None and self.optional_payoff_amount < Decimal("0.0000"):
+            raise ValueError("optional_payoff_amount must be non-negative")
+        if self.reserve_floor < Decimal("0.0000"):
+            raise ValueError("reserve_floor must be non-negative")
+        return self
+
+
+class AnalyzeDebtScoreExplanation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    annual_interest_cost: Decimal
+    cashflow_pressure: Decimal
+    payoff_readiness: Decimal
+
+
+class AnalyzeDebtLiabilityOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rank: int
+    liability_id: str
+    current_balance: Decimal
+    apr: Decimal
+    minimum_payment: Decimal
+    score: Decimal
+    estimated_annual_interest: Decimal
+    payoff_applied: Decimal
+    post_payoff_balance: Decimal
+    interest_saved: Decimal
+    cashflow_freed: Decimal
+    reserve_impact: Decimal
+    explanation: AnalyzeDebtScoreExplanation
+
+
+class AnalyzeDebtOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    optional_payoff_amount: Decimal | None
+    reserve_floor: Decimal
+    total_interest_saved: Decimal
+    total_cashflow_freed: Decimal
+    total_reserve_impact: Decimal
+    ranked_liabilities: list[AnalyzeDebtLiabilityOut]
     correlation_id: str
     output_hash: str

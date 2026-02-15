@@ -10,6 +10,7 @@ from capital_os.db.session import transaction
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 from capital_os.tools import (
+    analyze_debt,
     compute_capital_posture,
     create_or_update_obligation,
     record_balance_snapshot,
@@ -25,7 +26,29 @@ TOOL_HANDLERS = {
     "create_or_update_obligation": create_or_update_obligation.handle,
     "compute_capital_posture": compute_capital_posture.handle,
     "simulate_spend": simulate_spend.handle,
+    "analyze_debt": analyze_debt.handle,
 }
+
+
+def _sanitize_validation_errors(errors: list[dict]) -> list[dict]:
+    def _safe_ctx_value(value):
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, list):
+            return [_safe_ctx_value(item) for item in value]
+        if isinstance(value, dict):
+            return {str(k): _safe_ctx_value(v) for k, v in value.items()}
+        return str(value)
+
+    sanitized: list[dict] = []
+    for error in errors:
+        entry = {key: value for key, value in error.items() if key != "input"}
+        if "ctx" in entry and isinstance(entry["ctx"], dict):
+            entry["ctx"] = {
+                str(k): _safe_ctx_value(v) for k, v in entry["ctx"].items() if k != "input"
+            }
+        sanitized.append(entry)
+    return sanitized
 
 
 @app.get("/health")
@@ -53,7 +76,7 @@ async def run_tool(tool_name: str, request: Request):
         result = handler(payload)
         return result.model_dump()
     except ValidationError as exc:
-        error_payload = {"error": "validation_error", "details": exc.errors()}
+        error_payload = {"error": "validation_error", "details": _sanitize_validation_errors(exc.errors())}
         output_hash = payload_hash(error_payload)
         try:
             with transaction() as conn:
@@ -66,7 +89,7 @@ async def run_tool(tool_name: str, request: Request):
                     duration_ms=int((perf_counter() - started) * 1000),
                     status="validation_error",
                     error_code="validation_error",
-                    error_message=str(exc),
+                    error_message="validation_error",
                 )
         except Exception:
             raise HTTPException(status_code=500, detail={"error": "event_log_failure"}) from exc
@@ -85,7 +108,7 @@ async def run_tool(tool_name: str, request: Request):
                     duration_ms=int((perf_counter() - started) * 1000),
                     status="error",
                     error_code="tool_execution_error",
-                    error_message=str(exc),
+                    error_message="tool_execution_error",
                 )
         except Exception:
             # Fail-closed for write tools when logging fails.

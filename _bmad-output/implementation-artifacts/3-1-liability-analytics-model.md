@@ -1,6 +1,6 @@
 # Story 3.1: Liability Analytics Model
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,14 +17,14 @@ so that debt prioritization results are stable and explainable.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define liability score model (AC: 1)
-  - [ ] Add domain structures/functions in `src/capital_os/domain/debt/`.
-  - [ ] Include explicit score components used for ranking.
-- [ ] Task 2: Implement deterministic tie-breakers (AC: 2, 3)
-  - [ ] Add canonical ordering fallback fields.
-  - [ ] Ensure sorting remains stable across runs.
-- [ ] Task 3: Add unit tests for ranking determinism (AC: 4)
-  - [ ] Create tests for ties, mixed liabilities, and repeat-run equality.
+- [x] Task 1: Define liability score model (AC: 1)
+  - [x] Add domain structures/functions in `src/capital_os/domain/debt/`.
+  - [x] Include explicit score components used for ranking.
+- [x] Task 2: Implement deterministic tie-breakers (AC: 2, 3)
+  - [x] Add canonical ordering fallback fields.
+  - [x] Ensure sorting remains stable across runs.
+- [x] Task 3: Add unit tests for ranking determinism (AC: 4)
+  - [x] Create tests for ties, mixed liabilities, and repeat-run equality.
 
 ## Dev Notes
 
@@ -53,7 +53,7 @@ so that debt prioritization results are stable and explainable.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -61,8 +61,15 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added debt domain engine and service in `src/capital_os/domain/debt/`.
+- Implemented deterministic scoring and canonical tie-breaker ordering.
+- Added unit and replay determinism tests for debt ranking behavior.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/3-1-liability-analytics-model.md`
+- `src/capital_os/domain/debt/__init__.py`
+- `src/capital_os/domain/debt/engine.py`
+- `src/capital_os/domain/debt/service.py`
+- `tests/unit/test_debt_engine.py`
+- `tests/replay/test_output_replay.py`

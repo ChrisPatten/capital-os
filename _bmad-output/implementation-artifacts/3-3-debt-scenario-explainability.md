@@ -1,6 +1,6 @@
 # Story 3.3: Debt Scenario Explainability
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,17 +17,17 @@ so that debt recommendations are auditable without exposing secret material.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend debt response contract with explanations (AC: 1, 2)
-  - [ ] Add explicit explanation section to debt response schema.
-  - [ ] Keep key ordering and value normalization deterministic.
-- [ ] Task 2: Populate explanation payload (AC: 1, 2)
-  - [ ] Add score component attribution in debt domain outputs.
-  - [ ] Ensure canonical ordering of liabilities and components.
-- [ ] Task 3: Enforce no-secret output/logging policy (AC: 3)
-  - [ ] Validate that secret fields are not emitted to tool outputs/events.
-- [ ] Task 4: Add tests (AC: 4)
-  - [ ] Extend replay tests for output hash stability with explanations.
-  - [ ] Add explicit assertions for no secret leakage.
+- [x] Task 1: Extend debt response contract with explanations (AC: 1, 2)
+  - [x] Add explicit explanation section to debt response schema.
+  - [x] Keep key ordering and value normalization deterministic.
+- [x] Task 2: Populate explanation payload (AC: 1, 2)
+  - [x] Add score component attribution in debt domain outputs.
+  - [x] Ensure canonical ordering of liabilities and components.
+- [x] Task 3: Enforce no-secret output/logging policy (AC: 3)
+  - [x] Validate that secret fields are not emitted to tool outputs/events.
+- [x] Task 4: Add tests (AC: 4)
+  - [x] Extend replay tests for output hash stability with explanations.
+  - [x] Add explicit assertions for no secret leakage.
 
 ## Dev Notes
 
@@ -56,7 +56,7 @@ so that debt recommendations are auditable without exposing secret material.
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
@@ -64,8 +64,16 @@ TBD
 
 ### Completion Notes List
 
-- Story created and marked ready-for-dev.
+- Added deterministic per-liability score explanations to the debt output contract.
+- Added validation guardrails rejecting secret-like identifiers and unknown extra input fields.
+- Sanitized validation error payload/event logging in API layer to avoid secret leakage.
+- Added replay and integration assertions covering explainability determinism and secrecy guarantees.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/3-3-debt-scenario-explainability.md`
+- `src/capital_os/api/app.py`
+- `src/capital_os/schemas/tools.py`
+- `src/capital_os/domain/debt/engine.py`
+- `tests/integration/test_analyze_debt_tool.py`
+- `tests/replay/test_output_replay.py`

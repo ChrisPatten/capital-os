@@ -85,7 +85,7 @@ development_status:
 
   epic-8: in-progress
   8-1-entity-dimension-schema-migration: review
-  8-2-consolidated-posture-and-inter-entity-rules: ready-for-dev
+  8-2-consolidated-posture-and-inter-entity-rules: done
   8-3-multi-entity-scale-and-regression-tests: ready-for-dev
   epic-8-retrospective: optional
 

@@ -11,7 +11,7 @@ As of 2026-02-16.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
 - Epic 6 read/query surface is implemented (Stories 6.1, 6.2, 6.3).
 - Epic 7 reconciliation and truth policy tooling is implemented.
-- Epic 8 entity-dimension foundation (Story 8.1) is implemented and in review.
+- Epic 8 multi-entity core (Stories 8.1 and 8.2) is implemented; 8.3 scale/regression hardening remains.
 - Epic 9 period controls and policy expansion are implemented.
 - Epic 10 API security controls are implemented (authn/authz/correlation).
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
@@ -39,7 +39,7 @@ As of 2026-02-16.
   - `6-3-config-and-proposal-read-surface`: `done`
   - `epic-8`: `in-progress`
   - `8-1-entity-dimension-schema-migration`: `review`
-  - `8-2-consolidated-posture-and-inter-entity-rules`: `ready-for-dev`
+  - `8-2-consolidated-posture-and-inter-entity-rules`: `done`
   - `8-3-multi-entity-scale-and-regression-tests`: `ready-for-dev`
   - `epic-9`: `done`
   - `9-1-period-close-lock-and-adjustments`: `done`
@@ -64,6 +64,7 @@ As of 2026-02-16.
   - `record_balance_snapshot`
   - `create_or_update_obligation`
   - `compute_capital_posture`
+  - `compute_consolidated_posture`
   - `simulate_spend`
   - `analyze_debt`
   - `approve_proposed_transaction`

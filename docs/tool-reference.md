@@ -82,6 +82,24 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
   - `reserve_assumptions`
 - Persists event log entries for successful calls.
 
+## `compute_consolidated_posture`
+- Handler: `src/capital_os/tools/compute_consolidated_posture.py`
+- Domain service: `src/capital_os/domain/posture/consolidation.py`
+- Input schema: `ComputeConsolidatedPostureIn`
+- Output schema: `ComputeConsolidatedPostureOut`
+
+### Behavior
+- Non-mutating consolidation tool across selected `entity_ids`.
+- Requires deterministic per-entity posture inputs for every selected entity.
+- Enforces inter-entity transfer paired semantics:
+  - exactly two legs per `transfer_id`
+  - one inbound and one outbound leg
+  - mirrored entity/counterparty IDs
+  - identical transfer amounts
+- Computes transfer-neutral per-entity liquidity contributions and consolidated posture metrics.
+- Returns deterministic entity ordering (`entity_ids` sorted) and stable `output_hash`.
+- Emits event logs for success and validation failures.
+
 ## `simulate_spend`
 - Handler: `src/capital_os/tools/simulate_spend.py`
 - Engine: `src/capital_os/domain/simulation/engine.py`

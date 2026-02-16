@@ -25,6 +25,7 @@ DEFAULT_TOOL_CAPABILITIES = {
     "record_balance_snapshot": "tools:write",
     "create_or_update_obligation": "tools:write",
     "compute_capital_posture": "tools:read",
+    "compute_consolidated_posture": "tools:read",
     "simulate_spend": "tools:read",
     "analyze_debt": "tools:read",
     "approve_proposed_transaction": "tools:approve",

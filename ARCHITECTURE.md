@@ -10,6 +10,7 @@ In scope:
 - `record_balance_snapshot`.
 - `create_or_update_obligation`.
 - `compute_capital_posture`.
+- `compute_consolidated_posture`.
 - `simulate_spend`.
 - Event logging, idempotency, append-only controls, and write boundaries.
 

@@ -243,6 +243,8 @@ class PostureExplanation(BaseModel):
 
 
 class ComputeCapitalPostureOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     fixed_burn: Decimal
     variable_burn: Decimal
     volatility_buffer: Decimal
@@ -252,6 +254,150 @@ class ComputeCapitalPostureOut(BaseModel):
     reserve_ratio: Decimal
     risk_band: Literal["critical", "elevated", "guarded", "stable"]
     explanation: PostureExplanation
+    correlation_id: str
+    output_hash: str
+
+
+class ConsolidatedEntityPostureIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str
+    liquidity: Decimal
+    fixed_burn: Decimal
+    variable_burn: Decimal
+    minimum_reserve: Decimal
+    volatility_buffer: Decimal = Decimal("0.0000")
+
+    @field_validator(
+        "liquidity", "fixed_burn", "variable_burn", "minimum_reserve", "volatility_buffer", mode="before"
+    )
+    @classmethod
+    def _normalize_money(cls, value: Decimal | str) -> Decimal:
+        return normalize_amount(value)
+
+    @field_validator("fixed_burn", "variable_burn", "minimum_reserve", "volatility_buffer")
+    @classmethod
+    def _ensure_non_negative(cls, value: Decimal) -> Decimal:
+        if value < Decimal("0.0000"):
+            raise ValueError("burn and reserve inputs must be non-negative")
+        return value
+
+
+class InterEntityTransferLegIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transfer_id: str
+    entity_id: str
+    counterparty_entity_id: str
+    direction: Literal["in", "out"]
+    amount: Decimal
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def _normalize_amount(cls, value: Decimal | str) -> Decimal:
+        return normalize_amount(value)
+
+    @field_validator("amount")
+    @classmethod
+    def _ensure_positive_amount(cls, value: Decimal) -> Decimal:
+        if value <= Decimal("0.0000"):
+            raise ValueError("inter-entity transfer amount must be > 0")
+        return value
+
+
+class ConsolidatedEntityPostureOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str
+    liquidity: Decimal
+    transfer_net: Decimal
+    transfer_neutral_liquidity: Decimal
+    fixed_burn: Decimal
+    variable_burn: Decimal
+    minimum_reserve: Decimal
+    volatility_buffer: Decimal
+    reserve_target: Decimal
+    liquidity_surplus: Decimal
+    reserve_ratio: Decimal
+    risk_band: Literal["critical", "elevated", "guarded", "stable"]
+
+
+class ConsolidatedTransferPairOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transfer_id: str
+    entity_a_id: str
+    entity_b_id: str
+    amount: Decimal
+
+
+class ComputeConsolidatedPostureIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_ids: list[str] = Field(min_length=1)
+    entities: list[ConsolidatedEntityPostureIn] = Field(min_length=1)
+    inter_entity_transfers: list[InterEntityTransferLegIn] = Field(default_factory=list)
+    correlation_id: str
+
+    @model_validator(mode="after")
+    def _validate_entity_selection_and_transfer_pairs(self) -> "ComputeConsolidatedPostureIn":
+        if len(set(self.entity_ids)) != len(self.entity_ids):
+            raise ValueError("entity_ids must be unique")
+
+        selected = set(self.entity_ids)
+        entity_ids = [item.entity_id for item in self.entities]
+        if len(set(entity_ids)) != len(entity_ids):
+            raise ValueError("entities must contain unique entity_id values")
+
+        entity_set = set(entity_ids)
+        if entity_set != selected:
+            missing = sorted(selected - entity_set)
+            extra = sorted(entity_set - selected)
+            details: list[str] = []
+            if missing:
+                details.append("missing entities: " + ", ".join(missing))
+            if extra:
+                details.append("unexpected entities: " + ", ".join(extra))
+            raise ValueError("entities must exactly match entity_ids (" + "; ".join(details) + ")")
+
+        transfer_groups: dict[str, list[InterEntityTransferLegIn]] = {}
+        for leg in self.inter_entity_transfers:
+            if leg.entity_id == leg.counterparty_entity_id:
+                raise ValueError(f"transfer {leg.transfer_id} must reference two distinct entities")
+            if leg.entity_id not in selected or leg.counterparty_entity_id not in selected:
+                raise ValueError(
+                    f"transfer {leg.transfer_id} references entity outside selected entity_ids"
+                )
+            transfer_groups.setdefault(leg.transfer_id, []).append(leg)
+
+        for transfer_id in sorted(transfer_groups):
+            legs = transfer_groups[transfer_id]
+            if len(legs) != 2:
+                raise ValueError(f"transfer {transfer_id} must include exactly two legs")
+            first, second = legs
+            if first.direction == second.direction:
+                raise ValueError(f"transfer {transfer_id} must have one inbound and one outbound leg")
+            if first.entity_id != second.counterparty_entity_id or second.entity_id != first.counterparty_entity_id:
+                raise ValueError(f"transfer {transfer_id} legs must mirror entity/counterparty IDs")
+            if first.amount != second.amount:
+                raise ValueError(f"transfer {transfer_id} legs must use identical amounts")
+        return self
+
+
+class ComputeConsolidatedPostureOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_ids: list[str]
+    entities: list[ConsolidatedEntityPostureOut]
+    transfer_pairs: list[ConsolidatedTransferPairOut]
+    fixed_burn: Decimal
+    variable_burn: Decimal
+    volatility_buffer: Decimal
+    reserve_target: Decimal
+    liquidity: Decimal
+    liquidity_surplus: Decimal
+    reserve_ratio: Decimal
+    risk_band: Literal["critical", "elevated", "guarded", "stable"]
     correlation_id: str
     output_hash: str
 

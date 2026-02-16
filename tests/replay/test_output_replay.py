@@ -11,6 +11,7 @@ from capital_os.domain.ledger.service import record_transaction_bundle
 from capital_os.tools.close_period import handle as close_period_tool
 from capital_os.tools.lock_period import handle as lock_period_tool
 from capital_os.tools.analyze_debt import handle as analyze_debt_tool
+from capital_os.tools.compute_consolidated_posture import handle as compute_consolidated_posture_tool
 from capital_os.tools.compute_capital_posture import handle as compute_capital_posture_tool
 from capital_os.tools.simulate_spend import handle as simulate_spend_tool
 
@@ -67,6 +68,56 @@ def test_seeded_repeat_runs_keep_posture_output_hash_stable(db_available):
 
         assert first["output_hash"] == second["output_hash"]
         assert first == second
+
+
+def test_consolidated_posture_output_hash_is_reproducible(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    payload = {
+        "entity_ids": ["entity-b", "entity-a"],
+        "entities": [
+            {
+                "entity_id": "entity-a",
+                "liquidity": "12000.0000",
+                "fixed_burn": "3000.0000",
+                "variable_burn": "900.0000",
+                "minimum_reserve": "6000.0000",
+                "volatility_buffer": "700.0000",
+            },
+            {
+                "entity_id": "entity-b",
+                "liquidity": "9000.0000",
+                "fixed_burn": "2000.0000",
+                "variable_burn": "800.0000",
+                "minimum_reserve": "5000.0000",
+                "volatility_buffer": "600.0000",
+            },
+        ],
+        "inter_entity_transfers": [
+            {
+                "transfer_id": "seed-xfer-1",
+                "entity_id": "entity-a",
+                "counterparty_entity_id": "entity-b",
+                "direction": "out",
+                "amount": "1500.0000",
+            },
+            {
+                "transfer_id": "seed-xfer-1",
+                "entity_id": "entity-b",
+                "counterparty_entity_id": "entity-a",
+                "direction": "in",
+                "amount": "1500.0000",
+            },
+        ],
+        "correlation_id": "corr-consolidated-replay",
+    }
+
+    first = compute_consolidated_posture_tool(payload).model_dump(mode="json")
+    second = compute_consolidated_posture_tool(payload).model_dump(mode="json")
+
+    assert first["output_hash"] == second["output_hash"]
+    assert first == second
 
 
 def test_seeded_repeat_runs_keep_simulation_output_hash_stable(db_available):

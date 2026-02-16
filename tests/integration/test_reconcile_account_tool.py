@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_balance_snapshot, record_transaction_bundle
@@ -43,7 +44,7 @@ def test_reconcile_account_returns_deterministic_delta_and_proposed_adjustment(d
         pytest.skip("database unavailable")
 
     ids = _seed_reconciliation_state()
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
 
     with transaction() as conn:
         before_tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
@@ -83,7 +84,7 @@ def test_reconcile_account_ledger_only_returns_no_adjustment(db_available):
         pytest.skip("database unavailable")
 
     ids = _seed_reconciliation_state()
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
 
     response = client.post(
         "/tools/reconcile_account",
@@ -105,7 +106,7 @@ def test_reconcile_account_not_found_is_deterministic(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     payload = {
         "account_id": "does-not-exist",
         "as_of_date": "2026-01-10",
@@ -142,7 +143,7 @@ def test_reconcile_account_best_available_without_snapshot_uses_ledger(db_availa
         }
     )
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/reconcile_account",
         json={

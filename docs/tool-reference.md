@@ -1,12 +1,16 @@
 # Tool Reference
 
-As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_os/api/app.py`.
+As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_os/api/app.py`.
 
 ## Common Contract Notes
 - Input validation is done with Pydantic schemas in `src/capital_os/schemas/tools.py`.
+- Authentication is required via `x-capital-auth-token` header for all tool calls.
+- Authorization is capability-based and config-driven (`src/capital_os/config.py`), defaulting to deny on unmapped tools.
+- `correlation_id` is mandatory for all tool calls and validated at API boundary before dispatch.
 - Request hash: `input_hash = payload_hash(request_payload)`.
 - Response hash: `output_hash = payload_hash(response_payload_without_output_hash)` for write tools and posture tool.
 - Event logging target table: `event_log`.
+- Tool execution runs under in-process no-egress guardrails (`src/capital_os/security/no_egress.py`); default allowlist is empty.
 - Validation failures return HTTP `422` with:
   - `detail.error = "validation_error"`
   - `detail.details = [pydantic errors]`
@@ -306,8 +310,11 @@ As of 2026-02-15, the service exposes `POST /tools/{tool_name}` in `src/capital_
 
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.
+- Missing/invalid auth token: HTTP `401`, `{"error":"authentication_required"}`.
+- Capability denied: HTTP `403`, `{"error":"forbidden"}`.
 - Validation failure: HTTP `422` deterministic detail payload, with event logging attempt.
 - Validation payloads are sanitized to avoid echoing raw input values.
+- No-egress violation: HTTP `400`, `{"error":"security_violation","code":"network_egress_blocked"}`.
 - Tool execution failure: HTTP `400`, `{"error":"tool_execution_error","message":...}`.
 - Health failure: HTTP `503` from `/health`.
 
@@ -322,3 +329,7 @@ Logged by `src/capital_os/observability/event_log.py`:
 - `status`
 - `error_code` (optional)
 - `error_message` (optional)
+- `actor_id` (optional)
+- `authn_method` (optional)
+- `authorization_result` (optional)
+- `violation_code` (optional)

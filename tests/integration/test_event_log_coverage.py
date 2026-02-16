@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 
@@ -10,7 +11,7 @@ def test_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         a1 = create_account(conn, {"code": "1000", "name": "Cash", "account_type": "asset"})
         a2 = create_account(conn, {"code": "3000", "name": "Equity", "account_type": "equity"})
@@ -42,7 +43,7 @@ def test_compute_posture_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ok_payload = {
         "liquidity": "50000.0000",
         "fixed_burn": "12000.0000",
@@ -91,7 +92,7 @@ def test_compute_posture_output_hash_is_deterministic(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     payload = {
         "liquidity": "50000.0000",
         "fixed_burn": "12000.0000",
@@ -112,7 +113,7 @@ def test_simulate_spend_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ok_payload = {
         "starting_liquidity": "5000.0000",
         "start_date": "2026-01-01",
@@ -168,7 +169,7 @@ def test_simulate_spend_output_hash_is_deterministic(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     payload = {
         "starting_liquidity": "5000.0000",
         "start_date": "2026-01-01",
@@ -203,7 +204,7 @@ def test_approval_tools_success_and_validation_failures_logged(db_available, mon
     monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "100.0000")
     get_settings.cache_clear()
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         a1 = create_account(conn, {"code": "1700", "name": "Approval Cash", "account_type": "asset"})
         a2 = create_account(conn, {"code": "2700", "name": "Approval Liability", "account_type": "liability"})
@@ -281,7 +282,7 @@ def test_read_query_tools_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         create_account(conn, {"code": "1000", "name": "Cash", "account_type": "asset"})
 
@@ -324,7 +325,7 @@ def test_query_surface_tools_success_and_validation_failures_logged(db_available
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         cash = create_account(conn, {"code": "1100", "name": "Cash", "account_type": "asset"})
         equity = create_account(conn, {"code": "3100", "name": "Equity", "account_type": "equity"})
@@ -388,7 +389,7 @@ def test_reconcile_account_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         account_id = create_account(conn, {"code": "4100", "name": "Recon", "account_type": "asset"})
 
@@ -437,7 +438,7 @@ def test_period_tools_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
 
     assert (
         client.post(

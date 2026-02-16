@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.domain.approval.service import approve_proposed_transaction
@@ -45,7 +46,7 @@ def test_close_and_lock_period_tools_idempotent(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     close_first = client.post(
         "/tools/close_period",
         json={"period_key": "2026-01", "actor_id": "controller-a", "correlation_id": "corr-close-1"},
@@ -71,7 +72,7 @@ def test_closed_period_rejects_non_adjusting_entry_via_api(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     debit, credit = _seed_accounts()
     client.post(
         "/tools/close_period",
@@ -93,7 +94,7 @@ def test_closed_period_adjusting_entry_requires_approval(db_available, monkeypat
     monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
     get_settings.cache_clear()
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     debit, credit = _seed_accounts()
     client.post(
         "/tools/close_period",
@@ -116,7 +117,7 @@ def test_locked_period_requires_override(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     debit, credit = _seed_accounts()
     client.post(
         "/tools/lock_period",

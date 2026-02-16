@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_balance_snapshot, record_transaction_bundle
@@ -36,7 +37,7 @@ def test_list_accounts_deterministic_stable_pagination(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ids = _seed_accounts()
 
     page_1 = client.post(
@@ -77,7 +78,7 @@ def test_get_account_tree_returns_deterministic_hierarchy(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ids = _seed_accounts()
 
     response = client.post(
@@ -102,7 +103,7 @@ def test_get_account_balances_source_policy_deterministic(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ids = _seed_accounts()
 
     record_transaction_bundle(
@@ -178,7 +179,7 @@ def test_get_account_balances_uses_configured_default_policy(db_available, monke
     monkeypatch.setenv("CAPITAL_OS_BALANCE_SOURCE_POLICY", "ledger_only")
     get_settings.cache_clear()
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ids = _seed_accounts()
     record_transaction_bundle(
         {
@@ -221,7 +222,7 @@ def test_read_tools_do_not_mutate_canonical_tables(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ids = _seed_accounts()
     record_transaction_bundle(
         {

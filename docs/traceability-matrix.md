@@ -1,6 +1,6 @@
 # PRD Traceability Matrix
 
-As of 2026-02-15. Source requirements: `initial_prd.md`.
+As of 2026-02-16. Source requirements: `initial_prd.md`.
 
 This document maps PRD criteria to implementation and executable coverage.
 
@@ -13,7 +13,7 @@ This document maps PRD criteria to implementation and executable coverage.
 | SC-03 | 100% tool invocation trace logging | `src/capital_os/observability/event_log.py`, `src/capital_os/api/app.py` | `tests/integration/test_event_log_coverage.py` | Covered | Success and validation failures are asserted.
 | SC-04 | Replayability by logged input/state | `src/capital_os/domain/ledger/idempotency.py`, `src/capital_os/domain/approval/service.py` | `tests/replay/test_output_replay.py`, `tests/integration/test_idempotency_external_id.py`, `tests/integration/test_approval_workflow.py` | Covered | Duplicate keys and approval decision replay are deterministic.
 | SC-05 | Above-threshold writes are proposed-only until approval | `src/capital_os/domain/approval/policy.py`, `src/capital_os/domain/approval/service.py` | `tests/integration/test_approval_workflow.py` | Covered | No canonical ledger write before approval.
-| SC-06 | Runtime boundary: no external network calls | Runtime code layout under `src/capital_os/` | N/A | Gap | Remediation: add egress-deny test harness in a future security story.
+| SC-06 | Runtime boundary: no external network calls | `src/capital_os/security/no_egress.py`, `src/capital_os/api/app.py` | `tests/security/test_no_egress_enforcement.py` | Covered | In-process guardrails block outbound socket/http calls during tool execution paths.
 | SC-07 | p95 <300ms for compute/simulate/analyze | `tests/perf/test_tool_latency.py` | `tests/perf/test_tool_latency.py` | Partial | Smoke-level perf exists; full reference dataset perf run still pending.
 
 ## Functional Requirements (FR)
@@ -41,16 +41,15 @@ This document maps PRD criteria to implementation and executable coverage.
 | NFR-02 | ACID transactionality | `src/capital_os/db/session.py`, write services in single transactions | `tests/integration/test_record_transaction_bundle.py`, `tests/integration/test_approval_workflow.py` | Covered | Failure injection verifies rollback semantics.
 | NFR-03 | Performance p95 <300ms | Tool handlers under `src/capital_os/tools/` | `tests/perf/test_tool_latency.py` | Partial | Full reference dataset CI perf gate remains a future hardening item.
 | NFR-04 | Observability via correlation_id | `src/capital_os/observability/event_log.py` | `tests/integration/test_event_log_coverage.py` | Covered | Correlation ID persisted for success and validation failures.
-| NFR-05 | Safety/isolation (no outbound network) | Service-only architecture | N/A | Gap | Remediation: add explicit no-egress runtime test and CI network policy.
+| NFR-05 | Safety/isolation (no outbound network) | `src/capital_os/security/no_egress.py`, `src/capital_os/api/app.py` | `tests/security/test_no_egress_enforcement.py`, CI `security-isolation` job | Covered | No-egress guardrails enforced at runtime with deterministic violation telemetry.
 | NFR-06 | Reversible migrations in CI | `migrations/*.sql`, `migrations/*.rollback.sql`, `scripts/check_migration_cycle.py`, `.github/workflows/ci.yml` | CI `migration-reversibility` job | Covered | Apply -> rollback -> re-apply enforced in CI.
 | NFR-07 | Financial math branch coverage target | Unit test modules under `tests/unit/` | Existing unit suite | Gap | Remediation: add coverage tooling + branch threshold gate.
 | NFR-12 | Policy engine latency overhead <50ms p95 | `src/capital_os/domain/policy/service.py` | `tests/perf/test_tool_latency.py::test_policy_evaluation_overhead_p95_under_50ms` | Covered | Measured as policy evaluation overhead gate.
 
 ## Remediation Backlog (Open Gaps)
 
-1. Add egress-deny runtime enforcement tests for SC-06 / NFR-05.
-2. Add full reference-dataset performance gate for SC-07 / NFR-03.
-3. Add branch coverage threshold enforcement for NFR-07.
+1. Add full reference-dataset performance gate for SC-07 / NFR-03.
+2. Add branch coverage threshold enforcement for NFR-07.
 
 ## Delta FR Coverage (0215)
 
@@ -65,3 +64,6 @@ This document maps PRD criteria to implementation and executable coverage.
 | FR-25 | Period lock controls and override gating | `src/capital_os/domain/periods/service.py`, `src/capital_os/tools/lock_period.py`, `src/capital_os/domain/ledger/service.py` | `tests/integration/test_period_policy_controls.py`, `tests/integration/test_event_log_coverage.py` | Covered |
 | FR-26 | Expanded policy engine dimensions | `src/capital_os/domain/policy/service.py`, `migrations/0006_periods_policies.sql` | `tests/integration/test_period_policy_controls.py`, `tests/perf/test_tool_latency.py` | Covered |
 | FR-27 | Multi-party approval workflow semantics | `src/capital_os/domain/approval/service.py`, `src/capital_os/domain/approval/repository.py`, `migrations/0006_periods_policies.sql` | `tests/integration/test_period_policy_controls.py`, `tests/integration/test_approval_workflow.py` | Covered |
+| FR-28 | Authentication required for all tool invocations | `src/capital_os/api/app.py`, `src/capital_os/security/auth.py` | `tests/security/test_no_egress_enforcement.py` | Covered |
+| FR-29 | Tool-level capability authorization enforcement | `src/capital_os/api/app.py`, `src/capital_os/config.py` | `tests/security/test_no_egress_enforcement.py` | Covered |
+| FR-30 | Mandatory correlation IDs at API boundary | `src/capital_os/api/app.py` | `tests/security/test_no_egress_enforcement.py`, `tests/integration/test_tool_contract_validation.py` | Covered |

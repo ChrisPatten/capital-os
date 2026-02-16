@@ -14,6 +14,7 @@ _MIGRATION_FILES = (
     "0005_entity_dimension.sql",
     "0006_periods_policies.sql",
     "0007_query_surface_indexes.sql",
+    "0008_api_security_runtime_controls.sql",
 )
 
 

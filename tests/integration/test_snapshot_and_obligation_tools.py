@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 
@@ -13,7 +14,7 @@ def test_record_balance_snapshot_records_then_updates_single_canonical_row(db_av
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         account_id = create_account(conn, {"code": "1300", "name": "Snapshot Cash", "account_type": "asset"})
 
@@ -66,7 +67,7 @@ def test_create_or_update_obligation_creates_then_updates_active_record(db_avail
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     with transaction() as conn:
         account_id = create_account(conn, {"code": "2300", "name": "Obligation Liability", "account_type": "liability"})
 

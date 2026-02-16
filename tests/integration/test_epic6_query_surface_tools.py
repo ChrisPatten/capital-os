@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import create_or_update_obligation, record_transaction_bundle
@@ -93,7 +94,7 @@ def test_transaction_query_tools_are_deterministic(db_available):
     ids = _seed_accounts()
     _seed_transactions(ids)
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     first = client.post(
         "/tools/list_transactions",
         json={"limit": 2, "correlation_id": "corr-list-tx-1"},
@@ -127,7 +128,7 @@ def test_obligation_query_and_config_hooks_work(db_available):
     ids = _seed_accounts()
     _seed_obligations(ids)
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     obligations = client.post(
         "/tools/list_obligations",
         json={"limit": 10, "active_only": True, "correlation_id": "corr-list-ob"},
@@ -191,7 +192,7 @@ def test_new_read_query_tools_do_not_mutate_canonical_tables(db_available):
     ids = _seed_accounts()
     _seed_transactions(ids)
     _seed_obligations(ids)
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
 
     with transaction() as conn:
         before = {

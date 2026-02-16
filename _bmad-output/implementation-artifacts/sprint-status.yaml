@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-15
+generated: 2026-02-16
 project: capital-os
 project_key: capital-os
 tracking_system: file-system
@@ -95,10 +95,10 @@ development_status:
   9-3-multi-party-approval-and-latency-budget: done
   epic-9-retrospective: optional
 
-  epic-10: backlog
-  10-1-authentication-baseline: backlog
-  10-2-tool-level-authorization-and-correlation: backlog
-  10-3-no-egress-enforcement-and-security-coverage: backlog
+  epic-10: done
+  10-1-authentication-baseline: done
+  10-2-tool-level-authorization-and-correlation: done
+  10-3-no-egress-enforcement-and-security-coverage: done
   epic-10-retrospective: optional
 
   epic-11: backlog

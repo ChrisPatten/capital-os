@@ -2,7 +2,7 @@
 
 Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger and schema-validated tool APIs for agent use.
 
-## Current Status (2026-02-15)
+## Current Status (2026-02-16)
 - Core ledger foundation is implemented: accounts, balanced transaction bundles, idempotency, balance snapshots, obligations, and event logging.
 - Capital posture tooling is implemented (`compute_capital_posture`).
 - Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
@@ -11,6 +11,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Epic 9 governance expansion is implemented (`close_period`, `lock_period`, adjusting-entry enforcement, expanded policy rules, multi-party approvals).
 - Epic 6 deterministic read/query surface is implemented (`list_transactions`, `get_transaction_by_external_id`, `list_obligations`, `list_proposals`, `get_proposal`, `get_config`), plus config-governance hooks (`propose_config_change`, `approve_config_change`).
 - Epic 5 hardening work is implemented: PRD traceability matrix, migration reversibility CI gate, and expanded determinism regression suite.
+- Epic 10 security controls are implemented: header-token authentication, config-driven tool authorization, mandatory correlation IDs, and in-process no-egress guardrails.
 
 ## Tech Stack
 - Python 3.11+
@@ -83,6 +84,7 @@ pytest
 ```bash
 curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
   -H "content-type: application/json" \
+  -H "x-capital-auth-token: ${CAPITAL_OS_AUTH_TOKEN:-dev-admin-token}" \
   -d '{
     "source_system":"example",
     "external_id":"tx-001",
@@ -102,6 +104,8 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 - Monetary values are normalized to 4 decimal places with round-half-even.
 - Tool input/output hashing is deterministic.
 - Tool invocations are event-logged (success and validation failures).
+- Tool invocations require authenticated actor context and capability authorization.
+- Runtime no-egress guardrails block outbound network calls in tool execution paths by default.
 - Append-only protections exist on transaction, posting, and event-log history.
 
 ## Documentation Index
@@ -120,3 +124,7 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 - Story briefs: `_bmad-output/implementation-artifacts/*.md`
 - Epic planning: `_bmad-output/planning-artifacts/epic-*.md`
 - PRD baseline: `initial_prd.md`
+- Tool auth header (default dev token):
+```bash
+export CAPITAL_OS_AUTH_TOKEN=dev-admin-token
+```

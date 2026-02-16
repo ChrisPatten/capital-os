@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 from capital_os.db.session import transaction
 
 
@@ -33,7 +34,7 @@ def test_analyze_debt_contract_validation_failure_shape(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post("/tools/analyze_debt", json={"correlation_id": "corr-debt-invalid"})
     assert response.status_code == 422
     detail = response.json()["detail"]
@@ -46,7 +47,7 @@ def test_analyze_debt_success_and_validation_event_logs(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     ok_payload = _valid_payload("corr-debt-1")
     bad_payload = {
         "liabilities": [
@@ -100,7 +101,7 @@ def test_analyze_debt_output_hash_deterministic(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     payload = _valid_payload("corr-debt-stable")
     first = client.post("/tools/analyze_debt", json=payload)
     second = client.post("/tools/analyze_debt", json=payload)
@@ -114,7 +115,7 @@ def test_analyze_debt_rejects_secret_like_liability_identifier(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/analyze_debt",
         json={

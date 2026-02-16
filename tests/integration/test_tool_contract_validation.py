@@ -2,13 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from tests.support.auth import AUTH_HEADERS
 
 
 def test_invalid_payload_returns_deterministic_error_shape(db_available):
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/create_or_update_obligation",
         json={"source_system": "pytest", "correlation_id": "corr"},
@@ -23,7 +24,7 @@ def test_compute_posture_invalid_payload_returns_deterministic_error_shape(db_av
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/compute_capital_posture",
         json={"liquidity": "100.00", "correlation_id": "corr"},
@@ -39,7 +40,7 @@ def test_simulate_spend_invalid_payload_returns_deterministic_error_shape(db_ava
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/simulate_spend",
         json={"starting_liquidity": "1000.0000", "correlation_id": "corr"},
@@ -55,7 +56,7 @@ def test_approve_proposed_transaction_invalid_payload_returns_deterministic_erro
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/approve_proposed_transaction",
         json={"correlation_id": "corr"},
@@ -71,7 +72,7 @@ def test_reject_proposed_transaction_invalid_payload_returns_deterministic_error
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/reject_proposed_transaction",
         json={"correlation_id": "corr"},
@@ -87,7 +88,7 @@ def test_read_query_tools_invalid_payload_returns_deterministic_error_shape(db_a
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/get_account_balances",
         json={"source_policy": "not-a-policy", "correlation_id": "corr-read-invalid"},
@@ -112,7 +113,7 @@ def test_reconcile_account_invalid_payload_returns_deterministic_error_shape(db_
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     response = client.post(
         "/tools/reconcile_account",
         json={"account_id": "missing-fields", "correlation_id": "corr-reconcile-invalid"},
@@ -127,7 +128,7 @@ def test_period_tools_invalid_payload_returns_deterministic_error_shape(db_avail
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
     close_response = client.post(
         "/tools/close_period",
         json={"period_key": "2026-13", "correlation_id": "corr-close-invalid"},
@@ -151,7 +152,7 @@ def test_query_surface_tools_invalid_payload_returns_deterministic_error_shape(d
     if not db_available:
         pytest.skip("database unavailable")
 
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS)
 
     tx_response = client.post(
         "/tools/list_transactions",

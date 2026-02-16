@@ -2,13 +2,25 @@ from __future__ import annotations
 
 from datetime import timezone, datetime
 from time import perf_counter
+import re
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import ValidationError
 
+from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
+from capital_os.security import (
+    NetworkEgressBlockedError,
+    authenticate_token,
+    authorize_tool,
+    clear_request_security_context,
+    enforce_no_egress,
+    install_no_egress_guardrails,
+    set_request_security_context,
+)
+from capital_os.security.context import RequestSecurityContext
 from capital_os.tools import (
     approve_config_change,
     analyze_debt,
@@ -35,6 +47,19 @@ from capital_os.tools import (
 )
 
 app = FastAPI(title="Capital OS")
+CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+AUTH_TOKEN_HEADER = "x-capital-auth-token"
+WRITE_TOOLS = {
+    "record_transaction_bundle",
+    "record_balance_snapshot",
+    "create_or_update_obligation",
+    "approve_proposed_transaction",
+    "reject_proposed_transaction",
+    "propose_config_change",
+    "approve_config_change",
+    "close_period",
+    "lock_period",
+}
 
 TOOL_HANDLERS = {
     "record_transaction_bundle": record_transaction_bundle.handle,
@@ -61,6 +86,8 @@ TOOL_HANDLERS = {
     "lock_period": lock_period.handle,
 }
 
+install_no_egress_guardrails()
+
 
 def _sanitize_validation_errors(errors: list[dict]) -> list[dict]:
     def _safe_ctx_value(value):
@@ -83,6 +110,55 @@ def _sanitize_validation_errors(errors: list[dict]) -> list[dict]:
     return sanitized
 
 
+def _is_write_tool(tool_name: str) -> bool:
+    return tool_name in WRITE_TOOLS
+
+
+def _extract_correlation_id(payload: dict) -> str:
+    raw_value = payload.get("correlation_id")
+    if not isinstance(raw_value, str) or not CORRELATION_ID_PATTERN.match(raw_value):
+        raise ValueError("correlation_id is required and must match ^[A-Za-z0-9._:-]{1,128}$")
+    return raw_value
+
+
+def _emit_event(
+    *,
+    tool_name: str,
+    correlation_id: str,
+    input_hash: str,
+    output_hash: str,
+    duration_ms: int,
+    status: str,
+    error_code: str | None = None,
+    error_message: str | None = None,
+    actor_id: str | None = None,
+    authn_method: str | None = None,
+    authorization_result: str | None = None,
+    violation_code: str | None = None,
+    fail_closed: bool = False,
+) -> None:
+    try:
+        with transaction() as conn:
+            log_event(
+                conn,
+                tool_name=tool_name,
+                correlation_id=correlation_id,
+                input_hash=input_hash,
+                output_hash=output_hash,
+                duration_ms=duration_ms,
+                status=status,
+                error_code=error_code,
+                error_message=error_message,
+                actor_id=actor_id,
+                authn_method=authn_method,
+                authorization_result=authorization_result,
+                violation_code=violation_code,
+            )
+    except Exception as exc:
+        if fail_closed:
+            raise HTTPException(status_code=500, detail={"error": "event_log_failure"}) from exc
+
+
 @app.get("/health")
 def health() -> dict:
     try:
@@ -100,49 +176,134 @@ async def run_tool(tool_name: str, request: Request):
         raise HTTPException(status_code=404, detail={"error": "unknown_tool", "tool": tool_name})
 
     payload = await request.json()
+    if not isinstance(payload, dict):
+        payload = {}
+
     started = perf_counter()
     input_hash = payload_hash(payload)
     correlation_id = payload.get("correlation_id", "unknown")
 
+    auth_context = authenticate_token(request.headers.get(AUTH_TOKEN_HEADER))
+    if auth_context is None:
+        error_payload = {"error": "authentication_required"}
+        output_hash = payload_hash(error_payload)
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id=correlation_id if isinstance(correlation_id, str) else "unknown",
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="auth_error",
+            error_code="authentication_required",
+            error_message="authentication_required",
+            authorization_result="denied",
+        )
+        raise HTTPException(status_code=401, detail=error_payload)
+
     try:
-        result = handler(payload)
+        correlation_id = _extract_correlation_id(payload)
+    except ValueError as exc:
+        error_payload = {
+            "error": "validation_error",
+            "details": [
+                {
+                    "type": "value_error",
+                    "loc": ["body", "correlation_id"],
+                    "msg": str(exc),
+                }
+            ],
+        }
+        output_hash = payload_hash(error_payload)
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id="unknown",
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="validation_error",
+            error_code="validation_error",
+            error_message="validation_error",
+            actor_id=auth_context.actor_id,
+            authn_method=auth_context.authn_method,
+            authorization_result="denied",
+            fail_closed=_is_write_tool(tool_name),
+        )
+        raise HTTPException(status_code=422, detail=error_payload) from exc
+
+    if not authorize_tool(auth_context, tool_name):
+        error_payload = {"error": "forbidden"}
+        output_hash = payload_hash(error_payload)
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id=correlation_id,
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="authz_denied",
+            error_code="forbidden",
+            error_message="forbidden",
+            actor_id=auth_context.actor_id,
+            authn_method=auth_context.authn_method,
+            authorization_result="denied",
+        )
+        raise HTTPException(status_code=403, detail=error_payload)
+
+    context_token = set_request_security_context(
+        RequestSecurityContext(
+            actor_id=auth_context.actor_id,
+            authn_method=auth_context.authn_method,
+            authorization_result="allowed",
+        )
+    )
+    try:
+        with enforce_no_egress(allowlist=get_settings().no_egress_allowlist):
+            result = handler(payload)
         return result.model_dump()
     except ValidationError as exc:
         error_payload = {"error": "validation_error", "details": _sanitize_validation_errors(exc.errors())}
         output_hash = payload_hash(error_payload)
-        try:
-            with transaction() as conn:
-                log_event(
-                    conn,
-                    tool_name=tool_name,
-                    correlation_id=correlation_id,
-                    input_hash=input_hash,
-                    output_hash=output_hash,
-                    duration_ms=int((perf_counter() - started) * 1000),
-                    status="validation_error",
-                    error_code="validation_error",
-                    error_message="validation_error",
-                )
-        except Exception:
-            raise HTTPException(status_code=500, detail={"error": "event_log_failure"}) from exc
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id=correlation_id,
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="validation_error",
+            error_code="validation_error",
+            error_message="validation_error",
+            fail_closed=True,
+        )
         raise HTTPException(status_code=422, detail=error_payload) from exc
+    except NetworkEgressBlockedError as exc:
+        error_payload = {"error": "security_violation", "code": exc.error_code}
+        output_hash = payload_hash(error_payload)
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id=correlation_id,
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="security_violation",
+            error_code=exc.error_code,
+            error_message=exc.error_code,
+            violation_code=exc.error_code,
+            fail_closed=_is_write_tool(tool_name),
+        )
+        raise HTTPException(status_code=400, detail=error_payload) from exc
     except Exception as exc:
         error_payload = {"error": "tool_execution_error", "message": str(exc)}
         output_hash = payload_hash(error_payload)
-        try:
-            with transaction() as conn:
-                log_event(
-                    conn,
-                    tool_name=tool_name,
-                    correlation_id=correlation_id,
-                    input_hash=input_hash,
-                    output_hash=output_hash,
-                    duration_ms=int((perf_counter() - started) * 1000),
-                    status="error",
-                    error_code="tool_execution_error",
-                    error_message="tool_execution_error",
-                )
-        except Exception:
-            # Fail-closed for write tools when logging fails.
-            pass
+        _emit_event(
+            tool_name=tool_name,
+            correlation_id=correlation_id,
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="error",
+            error_code="tool_execution_error",
+            error_message="tool_execution_error",
+            fail_closed=_is_write_tool(tool_name),
+        )
         raise HTTPException(status_code=400, detail=error_payload) from exc
+    finally:
+        clear_request_security_context(context_token)

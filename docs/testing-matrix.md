@@ -1,6 +1,6 @@
 # Testing Matrix
 
-As of 2026-02-15.
+As of 2026-02-16.
 
 ## Deterministic Guarantees by Tool
 
@@ -31,9 +31,19 @@ As of 2026-02-15.
 
 Detailed SC/FR/NFR mapping lives in `docs/traceability-matrix.md`.
 
+## Security Controls
+
+| Control | Guarantee | Coverage |
+| --- | --- | --- |
+| Authn baseline | Every `POST /tools/{tool_name}` call requires `x-capital-auth-token` and returns deterministic `401` on absence/invalid token | `tests/security/test_no_egress_enforcement.py` |
+| Tool-level authz | Capability map enforcement yields deterministic `403` for denied tools and allow-path coverage for read tools | `tests/security/test_no_egress_enforcement.py` |
+| Correlation requirement | `correlation_id` required and validated before handler dispatch for all tools | `tests/security/test_no_egress_enforcement.py`, `tests/integration/test_tool_contract_validation.py` |
+| No-egress runtime guard | Outbound socket/http attempts in tool execution path are blocked and logged as deterministic security violations | `tests/security/test_no_egress_enforcement.py` |
+
 ## CI Gates
 
 - Full pytest suite: `.github/workflows/ci.yml` job `tests`.
 - Migration apply/rollback/re-apply gate: `.github/workflows/ci.yml` job `migration-reversibility`.
 - Replay/hash determinism regression gate: `.github/workflows/ci.yml` job `determinism-regression`.
+- Security isolation/auth surface gate: `.github/workflows/ci.yml` job `security-isolation`.
 - Performance regression gate includes policy-evaluation overhead p95 `<50ms`: `tests/perf/test_tool_latency.py`.

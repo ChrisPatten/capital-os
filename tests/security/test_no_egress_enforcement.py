@@ -1,0 +1,176 @@
+from __future__ import annotations
+
+import socket
+
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import BaseModel, ConfigDict
+
+from capital_os.api.app import TOOL_HANDLERS, app
+from capital_os.config import get_settings
+from capital_os.db.session import transaction
+from tests.support.auth import AUTH_HEADERS, READ_ONLY_AUTH_HEADERS
+
+
+class _ProbeOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str
+
+
+def test_health_route_remains_unauthenticated(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+
+
+def test_tools_reject_missing_authentication_and_log_event(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    payload = {"correlation_id": "corr-auth-required"}
+    response = client.post("/tools/list_accounts", json=payload)
+    assert response.status_code == 401
+    assert response.json()["detail"] == {"error": "authentication_required"}
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT status, error_code, authorization_result, actor_id, authn_method
+            FROM event_log
+            WHERE tool_name = 'list_accounts' AND correlation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (payload["correlation_id"],),
+        ).fetchone()
+    assert row is not None
+    assert row["status"] == "auth_error"
+    assert row["error_code"] == "authentication_required"
+    assert row["authorization_result"] == "denied"
+    assert row["actor_id"] is None
+    assert row["authn_method"] is None
+
+
+def test_authorization_denial_is_deterministic_and_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app, headers=READ_ONLY_AUTH_HEADERS)
+    payload = {"correlation_id": "corr-authz-denied"}
+    response = client.post("/tools/record_balance_snapshot", json=payload)
+    assert response.status_code == 403
+    assert response.json()["detail"] == {"error": "forbidden"}
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT status, error_code, authorization_result, actor_id, authn_method
+            FROM event_log
+            WHERE tool_name = 'record_balance_snapshot' AND correlation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (payload["correlation_id"],),
+        ).fetchone()
+    assert row is not None
+    assert row["status"] == "authz_denied"
+    assert row["error_code"] == "forbidden"
+    assert row["authorization_result"] == "denied"
+    assert row["actor_id"] == "actor-reader"
+    assert row["authn_method"] == "header_token"
+
+
+def test_correlation_id_is_mandatory_and_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app, headers=AUTH_HEADERS)
+    response = client.post("/tools/list_accounts", json={})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "validation_error"
+    assert detail["details"][0]["loc"] == ["body", "correlation_id"]
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT status, error_code, authorization_result, actor_id
+            FROM event_log
+            WHERE tool_name = 'list_accounts'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    assert row is not None
+    assert row["status"] == "validation_error"
+    assert row["error_code"] == "validation_error"
+    assert row["authorization_result"] == "denied"
+    assert row["actor_id"] == "actor-admin"
+
+
+def test_tool_surface_has_authn_and_authz_coverage(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app)
+    reader_client = TestClient(app, headers=READ_ONLY_AUTH_HEADERS)
+    tool_capabilities = get_settings().tool_capabilities or {}
+
+    for tool_name in sorted(TOOL_HANDLERS):
+        missing_auth = client.post(f"/tools/{tool_name}", json={"correlation_id": f"corr-no-auth-{tool_name}"})
+        assert missing_auth.status_code == 401, tool_name
+
+        required_capability = tool_capabilities.get(tool_name)
+        reader_response = reader_client.post(
+            f"/tools/{tool_name}",
+            json={"correlation_id": f"corr-reader-{tool_name}"},
+        )
+        if required_capability == "tools:read":
+            assert reader_response.status_code != 403, tool_name
+        else:
+            assert reader_response.status_code == 403, tool_name
+
+
+def test_no_egress_guard_blocks_socket_and_logs_security_event(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    def _egress_probe(_payload: dict) -> _ProbeOut:
+        socket.create_connection(("example.com", 80), timeout=0.1)
+        return _ProbeOut(status="ok")
+
+    monkeypatch.setitem(TOOL_HANDLERS, "list_accounts", _egress_probe)
+    client = TestClient(app, headers=AUTH_HEADERS)
+    payload = {"correlation_id": "corr-egress-deny-1"}
+
+    response = client.post("/tools/list_accounts", json=payload)
+    assert response.status_code == 400
+    assert response.json()["detail"] == {
+        "error": "security_violation",
+        "code": "network_egress_blocked",
+    }
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT status, error_code, violation_code, actor_id, authn_method, authorization_result
+            FROM event_log
+            WHERE tool_name = 'list_accounts' AND correlation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (payload["correlation_id"],),
+        ).fetchone()
+
+    assert row is not None
+    assert row["status"] == "security_violation"
+    assert row["error_code"] == "network_egress_blocked"
+    assert row["violation_code"] == "network_egress_blocked"
+    assert row["actor_id"] == "actor-admin"
+    assert row["authn_method"] == "header_token"
+    assert row["authorization_result"] == "allowed"

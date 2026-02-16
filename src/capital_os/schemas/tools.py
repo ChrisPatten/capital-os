@@ -309,16 +309,16 @@ class ConsolidatedEntityPostureOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     entity_id: str
-    liquidity: Decimal
-    transfer_net: Decimal
-    transfer_neutral_liquidity: Decimal
-    fixed_burn: Decimal
-    variable_burn: Decimal
-    minimum_reserve: Decimal
-    volatility_buffer: Decimal
-    reserve_target: Decimal
-    liquidity_surplus: Decimal
-    reserve_ratio: Decimal
+    liquidity: str
+    transfer_net: str
+    transfer_neutral_liquidity: str
+    fixed_burn: str
+    variable_burn: str
+    minimum_reserve: str
+    volatility_buffer: str
+    reserve_target: str
+    liquidity_surplus: str
+    reserve_ratio: str
     risk_band: Literal["critical", "elevated", "guarded", "stable"]
 
 
@@ -328,7 +328,7 @@ class ConsolidatedTransferPairOut(BaseModel):
     transfer_id: str
     entity_a_id: str
     entity_b_id: str
-    amount: Decimal
+    amount: str
 
 
 class ComputeConsolidatedPostureIn(BaseModel):
@@ -390,13 +390,13 @@ class ComputeConsolidatedPostureOut(BaseModel):
     entity_ids: list[str]
     entities: list[ConsolidatedEntityPostureOut]
     transfer_pairs: list[ConsolidatedTransferPairOut]
-    fixed_burn: Decimal
-    variable_burn: Decimal
-    volatility_buffer: Decimal
-    reserve_target: Decimal
-    liquidity: Decimal
-    liquidity_surplus: Decimal
-    reserve_ratio: Decimal
+    fixed_burn: str
+    variable_burn: str
+    volatility_buffer: str
+    reserve_target: str
+    liquidity: str
+    liquidity_surplus: str
+    reserve_ratio: str
     risk_band: Literal["critical", "elevated", "guarded", "stable"]
     correlation_id: str
     output_hash: str

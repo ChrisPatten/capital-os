@@ -14,6 +14,10 @@ As of 2026-02-16.
 - Epic 8 multi-entity core stories are implemented.
 - Epic 9 period controls and policy expansion are implemented.
 - Epic 10 API security controls are implemented (authn/authz/correlation).
+- MVP bootstrap COA seed path is implemented for initialization/reset workflows:
+  - `config/coa.yaml`
+  - `scripts/import_coa.py`
+  - `src/capital_os/db/coa_importer.py`
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -37,8 +41,8 @@ As of 2026-02-16.
   - `6-1-read-query-tooling-foundation`: `done`
   - `6-2-transaction-and-obligation-query-surface`: `done`
   - `6-3-config-and-proposal-read-surface`: `done`
-  - `epic-8`: `in-progress`
-  - `8-1-entity-dimension-schema-migration`: `review`
+  - `epic-8`: `done`
+  - `8-1-entity-dimension-schema-migration`: `done`
   - `8-2-consolidated-posture-and-inter-entity-rules`: `done`
   - `8-3-multi-entity-scale-and-regression-tests`: `done`
   - `epic-9`: `done`
@@ -49,6 +53,14 @@ As of 2026-02-16.
   - `10-1-authentication-baseline`: `done`
   - `10-2-tool-level-authorization-and-correlation`: `done`
   - `10-3-no-egress-enforcement-and-security-coverage`: `done` (rolled back no-egress on 2026-02-16; auth/authz/correlation coverage retained)
+  - `epic-11`: `backlog`
+  - `11-1-export-ledger-with-integrity-markers`: `backlog`
+  - `11-2-controlled-import-dry-run-and-strict-mode`: `backlog`
+  - `11-3-admin-backup-restore`: `backlog`
+  - `epic-12`: `in-progress`
+  - `12-1-bootstrap-coa-seed-path`: `review`
+  - `12-2-makefile-runtime-controls-and-serve-idle`: `ready-for-dev`
+  - `12-3-mvp-agent-smoke-flow-and-runbook`: `ready-for-dev`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`

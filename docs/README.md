@@ -1,6 +1,6 @@
 # Capital OS Documentation
 
-Last updated: 2026-02-15
+Last updated: 2026-02-16
 
 This directory is the working documentation set for agents and developers implementing Capital OS.
 

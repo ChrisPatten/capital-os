@@ -1,0 +1,52 @@
+version: 1
+
+metadata:
+  name: "Household COA"
+  currency: "USD"
+  generated_at: "2026-02-16"
+  notes: "Initial seed for Capital OS"
+
+import_policy:
+  mode: "upsert"
+  allow_updates:
+    name: true
+    description: true
+    metadata: true
+    is_active: true
+    parent_id: true
+  forbid_deletes: true
+  require_stable_ids: true
+
+accounts:
+  - account_id: "ast_cash_citizens_checking_7819"
+    name: "Assets:Cash:Citizens:Checking (*7819)"
+    type: "ASSET"
+    parent_id: null
+    is_active: true
+    currency: "USD"
+    description: "Primary checking account"
+    external_refs:
+      - system: "citizens"
+        ref: "checking_7819"
+      - system: "ofx"
+        ref: "ACCTID:...optional..."
+    tags: ["cash", "checking"]
+    metadata:
+      institution: "Citizens Bank"
+      last4: "7819"
+      account_kind: "checking"
+
+  - account_id: "eq_opening_balances"
+    name: "Equity:OpeningBalances"
+    type: "EQUITY"
+
+groups:
+  - group_id: "liquid_cash"
+    name: "Liquid Cash"
+    account_ids:
+      - "ast_cash_citizens_checking_7819"
+      - "eq_opening_balances"
+
+aliases:
+  - alias: "citizens_checking"
+    account_id: "ast_cash_citizens_checking_7819"

@@ -1,6 +1,6 @@
 # Story 8.1: Entity Dimension Schema and Migration
 
-Status: review
+Status: done
 
 ## Story
 

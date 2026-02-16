@@ -1,12 +1,14 @@
 # Data Model Reference
 
-As of 2026-02-15. Source migrations:
+As of 2026-02-16. Source migrations:
 - `migrations/0001_ledger_core.sql`
 - `migrations/0002_security_and_append_only.sql`
 - `migrations/0003_approval_gates.sql`
 - `migrations/0004_read_query_indexes.sql`
 - `migrations/0005_entity_dimension.sql`
 - `migrations/0006_periods_policies.sql`
+- `migrations/0007_query_surface_indexes.sql`
+- `migrations/0008_api_security_runtime_controls.sql`
 
 ## Canonical Tables
 
@@ -37,8 +39,6 @@ Key fields:
 - `parent_account_id TEXT REFERENCES accounts(account_id)`
 - `metadata TEXT NOT NULL DEFAULT '{}'`
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
-- `is_adjusting_entry INTEGER NOT NULL DEFAULT 0`
-- `adjusting_reason_code TEXT`
 
 Constraints and guards:
 - Unique `code`.
@@ -59,8 +59,8 @@ Key fields:
 - `output_hash TEXT` (set after canonical response shaping)
 - `response_payload TEXT` (serialized canonical response)
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
-- `matched_rule_id TEXT REFERENCES policy_rules(rule_id)`
-- `required_approvals INTEGER NOT NULL DEFAULT 1`
+- `is_adjusting_entry INTEGER NOT NULL DEFAULT 0`
+- `adjusting_reason_code TEXT`
 
 Constraints and guards:
 - Unique `(source_system, external_id)` for idempotency.
@@ -137,6 +137,10 @@ Key fields:
 - `status TEXT NOT NULL`
 - `error_code TEXT`
 - `error_message TEXT`
+- `actor_id TEXT`
+- `authn_method TEXT`
+- `authorization_result TEXT`
+- `violation_code TEXT`
 
 Constraints and guards:
 - Append-only update/delete blocked by triggers.
@@ -161,6 +165,8 @@ Key fields:
 - `response_payload TEXT`
 - `output_hash TEXT`
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `matched_rule_id TEXT REFERENCES policy_rules(rule_id)`
+- `required_approvals INTEGER NOT NULL DEFAULT 1`
 
 Constraints and guards:
 - Unique `(tool_name, source_system, external_id)` for deterministic proposal replay.

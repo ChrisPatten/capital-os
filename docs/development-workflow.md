@@ -1,6 +1,6 @@
 # Development Workflow
 
-As of 2026-02-15.
+As of 2026-02-16.
 
 ## Environment and Startup
 - Python requirement: `>=3.11` (`pyproject.toml`).
@@ -21,7 +21,11 @@ As of 2026-02-15.
   - `migrations/0004_read_query_indexes.sql`
   - `migrations/0005_entity_dimension.sql`
   - `migrations/0006_periods_policies.sql`
+  - `migrations/0007_query_surface_indexes.sql`
+  - `migrations/0008_api_security_runtime_controls.sql`
 - Rollback scripts exist for each forward migration:
+  - `migrations/0008_api_security_runtime_controls.rollback.sql`
+  - `migrations/0007_query_surface_indexes.rollback.sql`
   - `migrations/0006_periods_policies.rollback.sql`
   - `migrations/0005_entity_dimension.rollback.sql`
   - `migrations/0004_read_query_indexes.rollback.sql`
@@ -33,7 +37,18 @@ As of 2026-02-15.
 
 In test setup (`tests/conftest.py`):
 - Session scope applies forward migrations once.
-- Function scope resets DB by rollback then re-apply for test isolation.
+- Function scope resets DB by deleting SQLite files and re-applying forward migrations for deterministic isolation.
+
+## COA Bootstrap Workflow (MVP)
+- Validate COA seed file:
+  - `python3 scripts/import_coa.py config/coa.yaml --validate-only`
+- Dry-run COA seed:
+  - `python3 scripts/import_coa.py config/coa.yaml --dry-run`
+- Apply COA seed:
+  - `python3 scripts/import_coa.py config/coa.yaml`
+- Governance boundary:
+  - `config/coa.yaml` is bootstrap/reset input only.
+  - Post-bootstrap account changes should use governed API/tool flows.
 
 ## Test Execution
 - Run all tests:
@@ -67,6 +82,8 @@ Current test coverage areas:
   - `tests`: full pytest suite.
   - `migration-reversibility`: migration apply/rollback/re-apply gate via `scripts/check_migration_cycle.py`.
   - `determinism-regression`: replay/hash regression suite (`tests/replay/test_output_replay.py`).
+  - `security-auth-surface`: auth/authz/correlation security checks.
+  - `epic8-multi-entity-gates`: multi-entity replay and scale checks.
 
 ## Agent Backlog Workflow
 Canonical files:
@@ -82,6 +99,9 @@ Execution order for agents:
 4. Synchronize story status updates back into `sprint-status.yaml`.
 
 ## Current Priority Queue
-From `sprint-status.yaml` on 2026-02-15:
-- Epics 1-5 stories: `done`.
-- Epic 9 stories (`9-1`..`9-3`): `done`.
+From `sprint-status.yaml` on 2026-02-16:
+- Epic 11 stories remain `backlog`.
+- Epic 12 stories:
+  - `12-1`: `review`
+  - `12-2`: `ready-for-dev`
+  - `12-3`: `ready-for-dev`

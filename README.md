@@ -51,6 +51,24 @@ uvicorn capital_os.main:app --reload
 pytest
 ```
 
+## COA Bootstrap (MVP)
+- `config/coa.yaml` is the authoritative initial chart-of-accounts seed for bootstrap/reset flows.
+- Validate only:
+```bash
+python3 scripts/import_coa.py config/coa.yaml --validate-only
+```
+- Seed (idempotent upsert):
+```bash
+python3 scripts/import_coa.py config/coa.yaml
+```
+- Dry-run seed:
+```bash
+python3 scripts/import_coa.py config/coa.yaml --dry-run
+```
+- Governance boundary:
+  - `config/coa.yaml` is bootstrap/reset only.
+  - Post-bootstrap account changes should go through governed API/tool paths.
+
 ## API Surface
 - Health:
   - `GET /health`

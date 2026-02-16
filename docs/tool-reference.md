@@ -313,7 +313,6 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Capability denied: HTTP `403`, `{"error":"forbidden"}`.
 - Validation failure: HTTP `422` deterministic detail payload, with event logging attempt.
 - Validation payloads are sanitized to avoid echoing raw input values.
-- No-egress violation: HTTP `400`, `{"error":"security_violation","code":"network_egress_blocked"}`.
 - Tool execution failure: HTTP `400`, `{"error":"tool_execution_error","message":...}`.
 - Health failure: HTTP `503` from `/health`.
 

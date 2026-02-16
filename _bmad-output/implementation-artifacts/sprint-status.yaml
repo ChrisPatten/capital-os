@@ -107,8 +107,8 @@ development_status:
   11-3-admin-backup-restore: backlog
   epic-11-retrospective: optional
 
-  epic-12: in-progress
+  epic-12: done
   12-1-bootstrap-coa-seed-path: done
-  12-2-makefile-runtime-controls-and-serve-idle: review
-  12-3-mvp-agent-smoke-flow-and-runbook: review
+  12-2-makefile-runtime-controls-and-serve-idle: done
+  12-3-mvp-agent-smoke-flow-and-runbook: done
   epic-12-retrospective: optional

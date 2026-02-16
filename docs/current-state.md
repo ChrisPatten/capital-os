@@ -61,10 +61,10 @@ As of 2026-02-16.
   - `11-1-export-ledger-with-integrity-markers`: `backlog`
   - `11-2-controlled-import-dry-run-and-strict-mode`: `backlog`
   - `11-3-admin-backup-restore`: `backlog`
-  - `epic-12`: `in-progress`
+  - `epic-12`: `done`
   - `12-1-bootstrap-coa-seed-path`: `done`
-  - `12-2-makefile-runtime-controls-and-serve-idle`: `review`
-  - `12-3-mvp-agent-smoke-flow-and-runbook`: `ready-for-dev`
+  - `12-2-makefile-runtime-controls-and-serve-idle`: `done`
+  - `12-3-mvp-agent-smoke-flow-and-runbook`: `done`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`

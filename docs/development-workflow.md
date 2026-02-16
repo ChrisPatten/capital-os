@@ -118,5 +118,5 @@ From `sprint-status.yaml` on 2026-02-16:
 - Epic 11 stories remain `backlog`.
 - Epic 12 stories:
   - `12-1`: `done`
-  - `12-2`: `review`
-  - `12-3`: `ready-for-dev`
+  - `12-2`: `done`
+  - `12-3`: `done`

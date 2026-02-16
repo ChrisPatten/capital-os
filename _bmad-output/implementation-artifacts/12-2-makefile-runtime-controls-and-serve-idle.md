@@ -1,6 +1,6 @@
 # Story 12.2: Makefile Runtime Controls and Serve-Idle
 
-Status: review
+Status: done
 
 ## Story
 

@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-import socket
-
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import BaseModel, ConfigDict
 
 from capital_os.api.app import TOOL_HANDLERS, app
 from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from tests.support.auth import AUTH_HEADERS, READ_ONLY_AUTH_HEADERS
-
-
-class _ProbeOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    status: str
 
 
 def test_health_route_remains_unauthenticated(db_available):
@@ -134,43 +125,3 @@ def test_tool_surface_has_authn_and_authz_coverage(db_available):
             assert reader_response.status_code != 403, tool_name
         else:
             assert reader_response.status_code == 403, tool_name
-
-
-def test_no_egress_guard_blocks_socket_and_logs_security_event(db_available, monkeypatch):
-    if not db_available:
-        pytest.skip("database unavailable")
-
-    def _egress_probe(_payload: dict) -> _ProbeOut:
-        socket.create_connection(("example.com", 80), timeout=0.1)
-        return _ProbeOut(status="ok")
-
-    monkeypatch.setitem(TOOL_HANDLERS, "list_accounts", _egress_probe)
-    client = TestClient(app, headers=AUTH_HEADERS)
-    payload = {"correlation_id": "corr-egress-deny-1"}
-
-    response = client.post("/tools/list_accounts", json=payload)
-    assert response.status_code == 400
-    assert response.json()["detail"] == {
-        "error": "security_violation",
-        "code": "network_egress_blocked",
-    }
-
-    with transaction() as conn:
-        row = conn.execute(
-            """
-            SELECT status, error_code, violation_code, actor_id, authn_method, authorization_result
-            FROM event_log
-            WHERE tool_name = 'list_accounts' AND correlation_id = ?
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            (payload["correlation_id"],),
-        ).fetchone()
-
-    assert row is not None
-    assert row["status"] == "security_violation"
-    assert row["error_code"] == "network_egress_blocked"
-    assert row["violation_code"] == "network_egress_blocked"
-    assert row["actor_id"] == "actor-admin"
-    assert row["authn_method"] == "header_token"
-    assert row["authorization_result"] == "allowed"

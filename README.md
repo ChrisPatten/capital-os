@@ -11,7 +11,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Epic 9 governance expansion is implemented (`close_period`, `lock_period`, adjusting-entry enforcement, expanded policy rules, multi-party approvals).
 - Epic 6 deterministic read/query surface is implemented (`list_transactions`, `get_transaction_by_external_id`, `list_obligations`, `list_proposals`, `get_proposal`, `get_config`), plus config-governance hooks (`propose_config_change`, `approve_config_change`).
 - Epic 5 hardening work is implemented: PRD traceability matrix, migration reversibility CI gate, and expanded determinism regression suite.
-- Epic 10 security controls are implemented: header-token authentication, config-driven tool authorization, mandatory correlation IDs, and in-process no-egress guardrails.
+- Epic 10 security controls are implemented: header-token authentication, config-driven tool authorization, and mandatory correlation IDs.
 
 ## Tech Stack
 - Python 3.11+
@@ -105,7 +105,6 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 - Tool input/output hashing is deterministic.
 - Tool invocations are event-logged (success and validation failures).
 - Tool invocations require authenticated actor context and capability authorization.
-- Runtime no-egress guardrails block outbound network calls in tool execution paths by default.
 - Append-only protections exist on transaction, posting, and event-log history.
 
 ## Documentation Index

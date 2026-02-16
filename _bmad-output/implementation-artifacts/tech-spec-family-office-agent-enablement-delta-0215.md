@@ -72,7 +72,6 @@ This delta extends Capital OS from write-focused ledger core into a fully agent-
 
 ## Security and Governance Rules
 - 100% of tool calls must pass authn + authz checks.
-- Runtime no-egress policy must block outbound network calls and emit telemetry evidence.
 - Period lock blocks back-dated writes unless elevated approval exists.
 - Reconciliation adjustments are proposal-only and never auto-committed.
 
@@ -89,7 +88,7 @@ Each migration requires explicit rollback and CI coverage for apply->rollback->r
 - Integration: read/query determinism + stable pagination.
 - Integration: reconciliation proposal shape and non-commit guarantee.
 - Integration: period lock/close and override approval behavior.
-- Security: authn/authz coverage + correlation required + no-egress validation.
+- Security: authn/authz coverage + correlation required.
 - Replay: hash reproducibility across all new tools.
 - Perf: policy latency (<50ms p95 overhead), multi-entity scale (>=25 entities), read tool latency targets.
 

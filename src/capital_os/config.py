@@ -65,7 +65,6 @@ class Settings:
     balance_source_policy: str = "best_available"
     token_identities: dict[str, dict[str, object]] | None = None
     tool_capabilities: dict[str, str] | None = None
-    no_egress_allowlist: tuple[str, ...] = ()
 
 
 def _parse_json_mapping(raw_value: str, *, env_name: str) -> dict:
@@ -115,14 +114,6 @@ def _load_tool_capabilities() -> dict[str, str]:
     return normalized
 
 
-def _load_no_egress_allowlist() -> tuple[str, ...]:
-    raw = os.getenv("CAPITAL_OS_EGRESS_ALLOWLIST", "")
-    if not raw.strip():
-        return ()
-    hosts = [host.strip().lower() for host in raw.split(",") if host.strip()]
-    return tuple(sorted(set(hosts)))
-
-
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     db_url = os.getenv("CAPITAL_OS_DB_URL")
@@ -140,5 +131,4 @@ def get_settings() -> Settings:
         balance_source_policy=balance_source_policy,
         token_identities=_load_token_identities(),
         tool_capabilities=_load_tool_capabilities(),
-        no_egress_allowlist=_load_no_egress_allowlist(),
     )

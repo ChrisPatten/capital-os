@@ -7,17 +7,13 @@ import re
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import ValidationError
 
-from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 from capital_os.security import (
-    NetworkEgressBlockedError,
     authenticate_token,
     authorize_tool,
     clear_request_security_context,
-    enforce_no_egress,
-    install_no_egress_guardrails,
     set_request_security_context,
 )
 from capital_os.security.context import RequestSecurityContext
@@ -85,9 +81,6 @@ TOOL_HANDLERS = {
     "close_period": close_period.handle,
     "lock_period": lock_period.handle,
 }
-
-install_no_egress_guardrails()
-
 
 def _sanitize_validation_errors(errors: list[dict]) -> list[dict]:
     def _safe_ctx_value(value):
@@ -256,8 +249,7 @@ async def run_tool(tool_name: str, request: Request):
         )
     )
     try:
-        with enforce_no_egress(allowlist=get_settings().no_egress_allowlist):
-            result = handler(payload)
+        result = handler(payload)
         return result.model_dump()
     except ValidationError as exc:
         error_payload = {"error": "validation_error", "details": _sanitize_validation_errors(exc.errors())}
@@ -274,22 +266,6 @@ async def run_tool(tool_name: str, request: Request):
             fail_closed=True,
         )
         raise HTTPException(status_code=422, detail=error_payload) from exc
-    except NetworkEgressBlockedError as exc:
-        error_payload = {"error": "security_violation", "code": exc.error_code}
-        output_hash = payload_hash(error_payload)
-        _emit_event(
-            tool_name=tool_name,
-            correlation_id=correlation_id,
-            input_hash=input_hash,
-            output_hash=output_hash,
-            duration_ms=int((perf_counter() - started) * 1000),
-            status="security_violation",
-            error_code=exc.error_code,
-            error_message=exc.error_code,
-            violation_code=exc.error_code,
-            fail_closed=_is_write_tool(tool_name),
-        )
-        raise HTTPException(status_code=400, detail=error_payload) from exc
     except Exception as exc:
         error_payload = {"error": "tool_execution_error", "message": str(exc)}
         output_hash = payload_hash(error_payload)

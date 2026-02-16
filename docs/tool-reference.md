@@ -10,7 +10,6 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Request hash: `input_hash = payload_hash(request_payload)`.
 - Response hash: `output_hash = payload_hash(response_payload_without_output_hash)` for write tools and posture tool.
 - Event logging target table: `event_log`.
-- Tool execution runs under in-process no-egress guardrails (`src/capital_os/security/no_egress.py`); default allowlist is empty.
 - Validation failures return HTTP `422` with:
   - `detail.error = "validation_error"`
   - `detail.details = [pydantic errors]`

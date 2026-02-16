@@ -13,7 +13,7 @@ As of 2026-02-16.
 - Epic 7 reconciliation and truth policy tooling is implemented.
 - Epic 8 entity-dimension foundation (Story 8.1) is implemented and in review.
 - Epic 9 period controls and policy expansion are implemented.
-- Epic 10 API security controls are implemented (authn/authz/correlation/no-egress).
+- Epic 10 API security controls are implemented (authn/authz/correlation).
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -48,7 +48,7 @@ As of 2026-02-16.
   - `epic-10`: `done`
   - `10-1-authentication-baseline`: `done`
   - `10-2-tool-level-authorization-and-correlation`: `done`
-  - `10-3-no-egress-enforcement-and-security-coverage`: `done`
+  - `10-3-no-egress-enforcement-and-security-coverage`: `done` (rolled back no-egress on 2026-02-16; auth/authz/correlation coverage retained)
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`
@@ -116,7 +116,6 @@ As of 2026-02-16.
 - `src/capital_os/db/session.py`
 - Security runtime:
   - `src/capital_os/security/auth.py`
-  - `src/capital_os/security/no_egress.py`
   - `src/capital_os/security/context.py`
 
 ## Database and Migrations

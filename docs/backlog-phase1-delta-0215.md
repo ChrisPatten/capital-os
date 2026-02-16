@@ -49,7 +49,7 @@ Stories:
 
 ### Epic 10: API Security and Runtime Guardrails (FR-28..FR-30, NFR-09, NFR-11)
 Priority: P0
-Objective: Secure all tool calls with authn/authz and no-egress controls.
+Objective: Secure all tool calls with authn/authz and correlation controls.
 Stories:
 - 10.1 Authentication baseline and identity propagation
 - 10.2 Tool-level authorization + required `correlation_id`
@@ -128,7 +128,7 @@ Each migration requires forward + rollback test coverage in CI.
 - NFR-12: Epic 9 latency suite
 
 ## Recommended Execution Sequence
-1. Epic 10 (authn/authz/correlation/no-egress guardrails first)
+1. Epic 10 (authn/authz/correlation controls first)
 2. Epic 6 (read surface needed by agent operations)
 3. Epic 7 (reconciliation from read foundation)
 4. Epic 8 (entity dimension before consolidated posture)

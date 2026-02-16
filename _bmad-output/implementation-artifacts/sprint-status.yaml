@@ -98,7 +98,7 @@ development_status:
   epic-10: done
   10-1-authentication-baseline: done
   10-2-tool-level-authorization-and-correlation: done
-  10-3-no-egress-enforcement-and-security-coverage: done
+  10-3-no-egress-enforcement-and-security-coverage: done # 2026-02-16 rollback: no-egress removed, auth/authz/correlation coverage retained
   epic-10-retrospective: optional
 
   epic-11: backlog

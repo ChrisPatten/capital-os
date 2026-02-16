@@ -1,7 +1,7 @@
-# Epic 10: API Security and Runtime Controls (FR-28..FR-30, NFR-09, NFR-11)
+# Epic 10: API Security and Runtime Controls (FR-28..FR-30, NFR-09)
 
 ## Goal
-Guarantee authenticated, authorized, correlated, and no-egress tool execution.
+Guarantee authenticated, authorized, and correlated tool execution.
 
 ### Story 10.1: Authentication Baseline
 - Require authenticated identity for all tool calls.
@@ -11,6 +11,6 @@ Guarantee authenticated, authorized, correlated, and no-egress tool execution.
 - Enforce capability checks per tool.
 - Require `correlation_id` for all tool invocations.
 
-### Story 10.3: No-Egress Enforcement and Security Test Coverage
-- Add runtime guardrails blocking outbound network egress.
-- Add telemetry + tests proving 100% auth coverage and no-egress compliance.
+### Story 10.3: Security Coverage Adjustment and No-Egress Rollback
+- Remove runtime no-egress guardrails from tool execution.
+- Keep telemetry + tests proving auth/authz/correlation compliance.

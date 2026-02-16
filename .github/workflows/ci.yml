@@ -57,7 +57,7 @@ jobs:
       - name: Run replay/hash determinism suite
         run: pytest -q tests/replay/test_output_replay.py
 
-  security-isolation:
+  security-auth-surface:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -73,5 +73,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run security isolation and auth surface tests
-        run: pytest -q tests/security/test_no_egress_enforcement.py
+      - name: Run security auth surface tests
+        run: pytest -q tests/security/test_api_security_controls.py

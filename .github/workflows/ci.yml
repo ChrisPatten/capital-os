@@ -75,3 +75,24 @@ jobs:
 
       - name: Run security auth surface tests
         run: pytest -q tests/security/test_api_security_controls.py
+
+  epic8-multi-entity-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Epic 8 regression and scale gates
+        run: |
+          pytest -q tests/replay/test_multi_entity_replay.py
+          pytest -q tests/perf/test_multi_entity_scale.py

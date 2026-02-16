@@ -12,6 +12,17 @@ As of 2026-02-16.
   - `export CAPITAL_OS_DB_URL=sqlite:///./data/capital_os.db`
 - Run API:
   - `uvicorn capital_os.main:app --reload`
+- Make-based runtime controls:
+  - `make init`
+  - `make run`
+  - `make serve-idle`
+  - `make health`
+  - `make stop`
+- Runtime state files:
+  - `.run/capital-os.pid`
+  - `.run/capital-os.url`
+  - `.run/last_request.ts`
+  - `.run/uvicorn.log`
 
 ## Migration Workflow
 - Apply migrations in order:
@@ -49,6 +60,10 @@ In test setup (`tests/conftest.py`):
 - Governance boundary:
   - `config/coa.yaml` is bootstrap/reset input only.
   - Post-bootstrap account changes should use governed API/tool flows.
+
+## Migration Utility (MVP Runtime Controls)
+- Apply forward migrations:
+  - `python3 scripts/apply_migrations.py`
 
 ## Test Execution
 - Run all tests:
@@ -102,6 +117,6 @@ Execution order for agents:
 From `sprint-status.yaml` on 2026-02-16:
 - Epic 11 stories remain `backlog`.
 - Epic 12 stories:
-  - `12-1`: `review`
-  - `12-2`: `ready-for-dev`
+  - `12-1`: `done`
+  - `12-2`: `review`
   - `12-3`: `ready-for-dev`

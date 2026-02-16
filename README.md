@@ -51,6 +51,30 @@ uvicorn capital_os.main:app --reload
 pytest
 ```
 
+## Runtime Make Targets
+- Bootstrap database + COA seed:
+```bash
+make init
+```
+- Start runtime in background (idempotent when already healthy):
+```bash
+make run
+```
+- Start runtime with idle auto-shutdown:
+```bash
+CAPITAL_OS_IDLE_SECONDS=300 make serve-idle
+```
+- Health check and stop:
+```bash
+make health
+make stop
+```
+- Runtime state files are written under `.run/`:
+  - `.run/capital-os.pid`
+  - `.run/capital-os.url`
+  - `.run/last_request.ts`
+  - `.run/uvicorn.log`
+
 ## COA Bootstrap (MVP)
 - `config/coa.yaml` is the authoritative initial chart-of-accounts seed for bootstrap/reset flows.
 - Validate only:

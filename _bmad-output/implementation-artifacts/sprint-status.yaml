@@ -109,6 +109,6 @@ development_status:
 
   epic-12: in-progress
   12-1-bootstrap-coa-seed-path: done
-  12-2-makefile-runtime-controls-and-serve-idle: ready-for-dev
+  12-2-makefile-runtime-controls-and-serve-idle: review
   12-3-mvp-agent-smoke-flow-and-runbook: ready-for-dev
   epic-12-retrospective: optional

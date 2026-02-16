@@ -18,6 +18,10 @@ As of 2026-02-16.
   - `config/coa.yaml`
   - `scripts/import_coa.py`
   - `src/capital_os/db/coa_importer.py`
+- Runtime control surface is implemented for local agent/operator loops:
+  - `Makefile` targets for `init`, `migrate`, `coa-validate`, `coa-seed`, `run`, `serve-idle`, `health`, `stop`
+  - `scripts/serve_with_idle_shutdown.py` idle-aware runtime wrapper
+  - `scripts/apply_migrations.py` forward migration utility
 - Sprint tracker status (`_bmad-output/implementation-artifacts/sprint-status.yaml`):
   - `1-1-posture-domain-model-and-inputs`: `done`
   - `1-2-deterministic-posture-engine`: `done`
@@ -58,8 +62,8 @@ As of 2026-02-16.
   - `11-2-controlled-import-dry-run-and-strict-mode`: `backlog`
   - `11-3-admin-backup-restore`: `backlog`
   - `epic-12`: `in-progress`
-  - `12-1-bootstrap-coa-seed-path`: `review`
-  - `12-2-makefile-runtime-controls-and-serve-idle`: `ready-for-dev`
+  - `12-1-bootstrap-coa-seed-path`: `done`
+  - `12-2-makefile-runtime-controls-and-serve-idle`: `review`
   - `12-3-mvp-agent-smoke-flow-and-runbook`: `ready-for-dev`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`

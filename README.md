@@ -31,6 +31,7 @@ src/capital_os/
 migrations/        # Numbered schema migrations + rollback scripts
 tests/             # Unit/integration/replay/security/perf coverage
 docs/              # Project and agent documentation
+skills/            # Example SKILL.md files for Codex and Claude
 ```
 
 ## Quickstart

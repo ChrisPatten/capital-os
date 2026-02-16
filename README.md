@@ -69,6 +69,10 @@ CAPITAL_OS_IDLE_SECONDS=300 make serve-idle
 make health
 make stop
 ```
+- End-to-end deterministic MVP smoke flow (reset -> migrate -> seed -> serve -> write/read assertions -> stop):
+```bash
+make mvp-smoke
+```
 - Runtime state files are written under `.run/`:
   - `.run/capital-os.pid`
   - `.run/capital-os.url`
@@ -159,7 +163,14 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 - `docs/traceability-matrix.md`
 - `docs/development-workflow.md`
 - `docs/agent-playbooks/README.md`
+- `docs/mvp-bootstrap-agent-testing.md`
 - `docs/backlog-phase1-prd-closure.md`
+
+## Epic 11 Portability Status
+Epic 11 portability features are intentionally deferred in this slice:
+- Export ledger with integrity markers
+- Controlled import (dry-run and strict mode)
+- Admin backup/restore
 
 ## Planning and Backlog Source of Truth
 - Sprint status: `_bmad-output/implementation-artifacts/sprint-status.yaml`

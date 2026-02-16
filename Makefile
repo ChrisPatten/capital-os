@@ -13,7 +13,7 @@ URL_FILE := $(RUN_DIR)/capital-os.url
 LAST_REQUEST_FILE := $(RUN_DIR)/last_request.ts
 UVICORN_LOG := $(RUN_DIR)/uvicorn.log
 
-.PHONY: init migrate coa-validate coa-seed health run stop serve-idle
+.PHONY: init migrate coa-validate coa-seed health run stop serve-idle mvp-smoke
 
 init: migrate coa-seed
 
@@ -121,3 +121,9 @@ serve-idle:
 	done; \
 	echo "failed to start capital-os runtime at $(BASE_URL)" >&2; \
 	exit 1
+
+mvp-smoke:
+	CAPITAL_OS_DB_URL='$(CAPITAL_OS_DB_URL)' \
+	CAPITAL_OS_AUTH_TOKEN='$(CAPITAL_OS_AUTH_TOKEN)' \
+	BASE_URL='$(BASE_URL)' \
+	python3 scripts/mvp_smoke.py

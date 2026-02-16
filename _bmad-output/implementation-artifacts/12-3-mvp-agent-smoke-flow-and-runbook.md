@@ -1,6 +1,6 @@
 # Story 12.3: MVP Agent Smoke Flow and Runbook
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -30,18 +30,18 @@ so that I can reliably bootstrap, seed, run, and validate agent-driven API data 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement smoke runner script/target (AC: 1, 2, 3)
-  - [ ] Add a script that sequences migrate -> seed -> serve/health -> API calls -> assertions.
-  - [ ] Use deterministic fixture payloads with stable IDs/dates for repeatability.
-- [ ] Task 2: Add tool-level assertions for write/read path (AC: 1, 2)
-  - [ ] Assert successful write responses and expected entities in read responses.
-  - [ ] Assert deterministic output properties where feasible.
-- [ ] Task 3: Add clear failure handling and exit semantics (AC: 3)
-  - [ ] Emit step name + cause on failure.
-  - [ ] Return non-zero for pipeline/CI usage.
-- [ ] Task 4: Publish MVP runbook (AC: 4, 5)
-  - [ ] Add doc section for “MVP Bootstrap and Agent Testing”.
-  - [ ] Clarify what is intentionally deferred to Epic 11.
+- [x] Task 1: Implement smoke runner script/target (AC: 1, 2, 3)
+  - [x] Add a script that sequences migrate -> seed -> serve/health -> API calls -> assertions.
+  - [x] Use deterministic fixture payloads with stable IDs/dates for repeatability.
+- [x] Task 2: Add tool-level assertions for write/read path (AC: 1, 2)
+  - [x] Assert successful write responses and expected entities in read responses.
+  - [x] Assert deterministic output properties where feasible.
+- [x] Task 3: Add clear failure handling and exit semantics (AC: 3)
+  - [x] Emit step name + cause on failure.
+  - [x] Return non-zero for pipeline/CI usage.
+- [x] Task 4: Publish MVP runbook (AC: 4, 5)
+  - [x] Add doc section for “MVP Bootstrap and Agent Testing”.
+  - [x] Clarify what is intentionally deferred to Epic 11.
 
 ## Notes
 

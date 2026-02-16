@@ -5,6 +5,8 @@ CAPITAL_OS_DB_URL ?= sqlite:///./data/capital_os.db
 CAPITAL_OS_IDLE_SECONDS ?= 300
 COA_PATH ?= config/coa.yaml
 RUN_DIR ?= .run
+HEALTH_RETRIES ?= 20
+HEALTH_RETRY_DELAY ?= 0.2
 
 PID_FILE := $(RUN_DIR)/capital-os.pid
 URL_FILE := $(RUN_DIR)/capital-os.url
@@ -29,7 +31,15 @@ health:
 
 run:
 	@mkdir -p '$(RUN_DIR)'
-	@if curl -fsS '$(BASE_URL)/health' >/dev/null 2>&1; then \
+	@healthy=0; \
+	for _ in $$(seq 1 $(HEALTH_RETRIES)); do \
+		if curl -fsS '$(BASE_URL)/health' >/dev/null 2>&1; then \
+			healthy=1; \
+			break; \
+		fi; \
+		sleep $(HEALTH_RETRY_DELAY); \
+	done; \
+	if [ "$$healthy" -eq 1 ]; then \
 		echo "capital-os already healthy at $(BASE_URL)"; \
 		exit 0; \
 	fi
@@ -77,7 +87,15 @@ stop:
 
 serve-idle:
 	@mkdir -p '$(RUN_DIR)'
-	@if curl -fsS '$(BASE_URL)/health' >/dev/null 2>&1; then \
+	@healthy=0; \
+	for _ in $$(seq 1 $(HEALTH_RETRIES)); do \
+		if curl -fsS '$(BASE_URL)/health' >/dev/null 2>&1; then \
+			healthy=1; \
+			break; \
+		fi; \
+		sleep $(HEALTH_RETRY_DELAY); \
+	done; \
+	if [ "$$healthy" -eq 1 ]; then \
 		echo "capital-os already healthy at $(BASE_URL)"; \
 		exit 0; \
 	fi

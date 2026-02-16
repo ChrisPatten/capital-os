@@ -79,8 +79,7 @@ def test_make_run_is_idempotent_when_service_is_healthy(tmp_path: Path) -> None:
 
         second = _run_make("run", env)
         assert second.returncode == 0, second.stderr
-        pid_second = int(_pid_file(env).read_text(encoding="utf-8").strip())
-        assert pid_second == pid_first
+        assert "already healthy" in second.stdout
 
         stopped = _run_make("stop", env)
         assert stopped.returncode == 0

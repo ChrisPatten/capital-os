@@ -42,6 +42,7 @@ from capital_os.tools import (
     record_transaction_bundle,
     reject_proposed_transaction,
     simulate_spend,
+    update_account_metadata,
 )
 
 app = FastAPI(title="Capital OS")
@@ -49,6 +50,7 @@ CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 AUTH_TOKEN_HEADER = "x-capital-auth-token"
 WRITE_TOOLS = {
     "create_account",
+    "update_account_metadata",
     "record_transaction_bundle",
     "record_balance_snapshot",
     "create_or_update_obligation",
@@ -83,6 +85,7 @@ TOOL_HANDLERS = {
     "propose_config_change": propose_config_change.handle,
     "approve_config_change": approve_config_change.handle,
     "reconcile_account": reconcile_account.handle,
+    "update_account_metadata": update_account_metadata.handle,
     "close_period": close_period.handle,
     "lock_period": lock_period.handle,
 }

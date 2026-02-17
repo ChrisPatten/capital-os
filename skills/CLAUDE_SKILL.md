@@ -71,7 +71,7 @@ For any tool call:
 
 ## Account management tools
 - `create_account` — Create new accounts in the chart of accounts at runtime (requires `tools:write`)
-- `update_account_metadata` — Update account metadata fields (coming soon)
+- `update_account_metadata` — Update account metadata using JSON merge-patch semantics (requires `tools:write`)
 
 Example — create a new cash account:
 ```bash
@@ -85,6 +85,18 @@ curl -sS -H "x-capital-auth-token: $TOKEN" \
     "parent_account_id": "acct-checking",
     "metadata": {"institution": "Chase"},
     "correlation_id": "capos.create_account.20260216.a1"
+  }'
+```
+
+Example — update account metadata (merge-patch: provided keys overwrite, null removes, unmentioned preserved):
+```bash
+curl -sS -H "x-capital-auth-token: $TOKEN" \
+  -H "content-type: application/json" \
+  "$CAPOS/tools/update_account_metadata" \
+  -d '{
+    "account_id": "acct-checking",
+    "metadata": {"institution": "Wells Fargo", "obsolete_field": null},
+    "correlation_id": "capos.update_meta.20260216.a1"
   }'
 ```
 

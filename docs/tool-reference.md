@@ -33,6 +33,26 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Logs event in same transaction (fail-closed).
 - Capability: `tools:write`.
 
+## `update_account_metadata`
+- Handler: `src/capital_os/tools/update_account_metadata.py`
+- Domain service: `src/capital_os/domain/accounts/service.py::update_account_metadata`
+- Input schema: `UpdateAccountMetadataIn`
+- Output schema: `UpdateAccountMetadataOut`
+
+### Behavior
+- Updates account metadata using JSON merge-patch (RFC 7396) semantics.
+- Required fields: `account_id`, `metadata` (JSON object), `correlation_id`.
+- Merge-patch semantics:
+  - Provided keys overwrite existing values.
+  - Keys set to `null` are removed from metadata.
+  - Unmentioned keys are preserved.
+  - Nested objects are replaced wholesale (not deep-merged).
+- Validates `account_id` exists (returns 400 if not found).
+- Forbids unknown payload keys (`extra="forbid"`).
+- Returns full merged `metadata`, `account_id`, `status = "committed"`, `correlation_id`, and `output_hash` on success.
+- Logs event in same transaction (fail-closed).
+- Capability: `tools:write`.
+
 ## `record_transaction_bundle`
 - Handler: `src/capital_os/tools/record_transaction_bundle.py`
 - Domain service: `src/capital_os/domain/ledger/service.py::record_transaction_bundle`

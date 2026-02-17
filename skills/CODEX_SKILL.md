@@ -80,6 +80,25 @@ curl -sS -H "x-capital-auth-token: $TOKEN" \
   }'
 ```
 
+### Update account metadata
+Use `update_account_metadata` to modify account metadata using JSON merge-patch (RFC 7396):
+- Required: `account_id`, `metadata` (JSON object), `correlation_id`
+- Merge-patch semantics: provided keys overwrite, unmentioned keys preserved, keys set to `null` are removed
+- Returns full merged `metadata`, `account_id`, `status: "committed"`, `output_hash`
+- Capability: `tools:write`
+
+Example:
+```bash
+curl -sS -H "x-capital-auth-token: $TOKEN" \
+  -H "content-type: application/json" \
+  "$CAPOS/tools/update_account_metadata" \
+  -d '{
+    "account_id": "acct-checking",
+    "metadata": {"institution": "Wells Fargo", "obsolete_field": null},
+    "correlation_id": "capos.update_meta.20260216.a1"
+  }'
+```
+
 ## Minimal "put data into it" workflow (MVP)
 
 ### 1) Record balance snapshots (quickest value)

@@ -1003,4 +1003,29 @@ class CreateAccountOut(BaseModel):
     output_hash: str
 
 
+class UpdateAccountMetadataIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    metadata: dict
+    correlation_id: str
+
+    @field_validator("metadata")
+    @classmethod
+    def _validate_metadata_is_object(cls, value: dict) -> dict:
+        if not isinstance(value, dict):
+            raise ValueError("metadata must be a JSON object")
+        return value
+
+
+class UpdateAccountMetadataOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    metadata: dict
+    status: Literal["committed"]
+    correlation_id: str
+    output_hash: str
+
+
 TreeAccountNode.model_rebuild()

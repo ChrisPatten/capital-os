@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from time import perf_counter
 
@@ -61,6 +62,55 @@ def create_account_entry(payload: dict) -> dict:
         if "cycle" in msg or "hierarchy" in msg:
             raise ValueError("account hierarchy cycle detected") from exc
         raise ValueError(str(exc)) from exc
+
+
+def update_account_metadata(payload: dict) -> dict:
+    started = perf_counter()
+    input_hash = payload_hash(payload)
+    account_id = payload["account_id"]
+    patch = payload["metadata"]
+
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT metadata FROM accounts WHERE account_id = ?",
+            (account_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"account_id '{account_id}' does not exist")
+
+        current = json.loads(row["metadata"]) if row["metadata"] else {}
+
+        # RFC 7396 merge-patch: overwrite provided keys, remove null keys, preserve unmentioned
+        for key, value in patch.items():
+            if value is None:
+                current.pop(key, None)
+            else:
+                current[key] = value
+
+        conn.execute(
+            "UPDATE accounts SET metadata = ? WHERE account_id = ?",
+            (json.dumps(current, separators=(",", ":"), sort_keys=True), account_id),
+        )
+
+        response = {
+            "account_id": account_id,
+            "metadata": current,
+            "status": "committed",
+            "correlation_id": payload["correlation_id"],
+        }
+        output_hash = payload_hash(response)
+        response["output_hash"] = output_hash
+
+        log_event(
+            conn,
+            tool_name="update_account_metadata",
+            correlation_id=payload["correlation_id"],
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="ok",
+        )
+        return response
 
 
 def list_account_subtree(root_account_id: str | None = None) -> dict:

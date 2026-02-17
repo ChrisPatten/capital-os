@@ -18,6 +18,9 @@ As of 2026-02-16.
   - `config/coa.yaml`
   - `scripts/import_coa.py`
   - `src/capital_os/db/coa_importer.py`
+- Epic 13 account management tooling is in progress:
+  - `create_account` tool is implemented and tested (Story 13.1).
+  - `update_account_metadata` tool is ready for dev (Story 13.2).
 - Runtime control surface is implemented for local agent/operator loops:
   - `Makefile` targets for `init`, `migrate`, `coa-validate`, `coa-seed`, `run`, `serve-idle`, `health`, `stop`
   - `scripts/serve_with_idle_shutdown.py` idle-aware runtime wrapper
@@ -65,6 +68,9 @@ As of 2026-02-16.
   - `12-1-bootstrap-coa-seed-path`: `done`
   - `12-2-makefile-runtime-controls-and-serve-idle`: `done`
   - `12-3-mvp-agent-smoke-flow-and-runbook`: `done`
+  - `epic-13`: `in-progress`
+  - `13-1-create-account-tool`: `done`
+  - `13-2-update-account-metadata-tool`: `ready-for-dev`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`
@@ -76,6 +82,7 @@ As of 2026-02-16.
   - `GET /health`
   - `POST /tools/{tool_name}`
 - Registered tools:
+  - `create_account`
   - `record_transaction_bundle`
   - `record_balance_snapshot`
   - `create_or_update_obligation`

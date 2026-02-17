@@ -56,7 +56,31 @@ Error semantics (high-signal):
 - `422` schema/validation error (deterministic, sanitized)
 - `400` tool execution error
 
-## Minimal “put data into it” workflow (MVP)
+## Account management
+
+### Create accounts at runtime
+Use `create_account` to add new accounts to the chart of accounts:
+- Required: `code`, `name`, `account_type` (asset/liability/equity/income/expense), `correlation_id`
+- Optional: `parent_account_id`, `entity_id`, `metadata`
+- Returns `account_id` and `status: "committed"` on success
+- Capability: `tools:write`
+
+Example:
+```bash
+curl -sS -H "x-capital-auth-token: $TOKEN" \
+  -H "content-type: application/json" \
+  "$CAPOS/tools/create_account" \
+  -d '{
+    "code": "1310",
+    "name": "New Checking Account",
+    "account_type": "asset",
+    "parent_account_id": "acct-checking",
+    "metadata": {"institution": "Chase"},
+    "correlation_id": "capos.create_account.20260216.a1"
+  }'
+```
+
+## Minimal "put data into it" workflow (MVP)
 
 ### 1) Record balance snapshots (quickest value)
 Use `record_balance_snapshot` to store point-in-time balances by `(account_id, snapshot_date)` (upsert).

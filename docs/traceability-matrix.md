@@ -67,3 +67,4 @@ This document maps PRD criteria to implementation and executable coverage.
 | FR-28 | Authentication required for all tool invocations | `src/capital_os/api/app.py`, `src/capital_os/security/auth.py` | `tests/security/test_api_security_controls.py` | Covered |
 | FR-29 | Tool-level capability authorization enforcement | `src/capital_os/api/app.py`, `src/capital_os/config.py` | `tests/security/test_api_security_controls.py` | Covered |
 | FR-30 | Mandatory correlation IDs at API boundary | `src/capital_os/api/app.py` | `tests/security/test_api_security_controls.py`, `tests/integration/test_tool_contract_validation.py` | Covered |
+| FR-31 | Create accounts at runtime via tool API | `src/capital_os/tools/create_account.py`, `src/capital_os/domain/accounts/service.py` | `tests/integration/test_create_account_tool.py`, `tests/replay/test_create_account_replay.py` | Covered |

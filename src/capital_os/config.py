@@ -21,6 +21,7 @@ DEFAULT_TOKEN_IDENTITIES = {
 }
 
 DEFAULT_TOOL_CAPABILITIES = {
+    "create_account": "tools:write",
     "record_transaction_bundle": "tools:write",
     "record_balance_snapshot": "tools:write",
     "create_or_update_obligation": "tools:write",

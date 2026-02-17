@@ -27,6 +27,7 @@ As of 2026-02-16.
 | `propose_config_change` | Duplicate config proposal key returns deterministic proposal replay semantics and `output_hash` | `tests/integration/test_epic6_query_surface_tools.py`, `tests/replay/test_query_surface_replay.py` |
 | `approve_config_change` | Repeat approval calls return deterministic applied/already-applied responses and `output_hash` | `tests/integration/test_epic6_query_surface_tools.py` |
 | `reconcile_account` | Same state/input returns stable reconciliation payload, proposed-only suggestion, and `output_hash` | `tests/integration/test_reconcile_account_tool.py`, `tests/replay/test_reconciliation_replay.py` |
+| `create_account` | Same input produces identical `output_hash`; event log hashes match recomputation | `tests/integration/test_create_account_tool.py`, `tests/replay/test_create_account_replay.py` |
 
 ## PRD Criterion Coverage Summary
 

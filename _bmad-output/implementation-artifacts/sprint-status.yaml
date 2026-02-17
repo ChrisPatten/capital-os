@@ -112,3 +112,8 @@ development_status:
   12-2-makefile-runtime-controls-and-serve-idle: done
   12-3-mvp-agent-smoke-flow-and-runbook: done
   epic-12-retrospective: optional
+
+  epic-13: in-progress
+  13-1-create-account-tool: done
+  13-2-update-account-metadata-tool: ready-for-dev
+  epic-13-retrospective: optional

@@ -982,4 +982,25 @@ class ReconcileAccountOut(BaseModel):
     output_hash: str
 
 
+class CreateAccountIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=256)
+    account_type: Literal["asset", "liability", "equity", "income", "expense"]
+    parent_account_id: str | None = None
+    entity_id: str = DEFAULT_ENTITY_ID
+    metadata: dict = Field(default_factory=dict)
+    correlation_id: str
+
+
+class CreateAccountOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    status: Literal["committed"]
+    correlation_id: str
+    output_hash: str
+
+
 TreeAccountNode.model_rebuild()

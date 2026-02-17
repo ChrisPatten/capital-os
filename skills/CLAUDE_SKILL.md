@@ -36,10 +36,14 @@ If a tool returns `403`, you lack the capability for that tool (do not retry bli
 - Always generate a unique `correlation_id` per call.
 - Do not include secrets or secret-like strings in payloads. 
 
-## The “MVP ready” way to put data in
-### Step 0 — One-time COA seed
-Run `make init`, then verify accounts exist using:
-- `list_accounts` or `get_account_tree` 
+## The "MVP ready" way to put data in
+### Step 0 — Bootstrap COA + create accounts as needed
+Run `make init` to seed the initial chart of accounts, then verify with `list_accounts` or `get_account_tree`.
+
+To add new accounts at runtime, use `create_account`:
+- Required: `code`, `name`, `account_type` (asset/liability/equity/income/expense)
+- Optional: `parent_account_id`, `entity_id`, `metadata`
+- Returns `account_id` on success
 
 ### Step 1 — Snapshot-first (lowest friction)
 Use `record_balance_snapshot` to store balances (upsert by `(account_id, snapshot_date)`).
@@ -65,6 +69,25 @@ For any tool call:
 - 422: schema/validation error → fix payload; do not assume partial writes.
 - 400: tool execution error → treat as no commit unless you received an explicit committed status.
 
+## Account management tools
+- `create_account` — Create new accounts in the chart of accounts at runtime (requires `tools:write`)
+- `update_account_metadata` — Update account metadata fields (coming soon)
+
+Example — create a new cash account:
+```bash
+curl -sS -H "x-capital-auth-token: $TOKEN" \
+  -H "content-type: application/json" \
+  "$CAPOS/tools/create_account" \
+  -d '{
+    "code": "1310",
+    "name": "New Checking Account",
+    "account_type": "asset",
+    "parent_account_id": "acct-checking",
+    "metadata": {"institution": "Chase"},
+    "correlation_id": "capos.create_account.20260216.a1"
+  }'
+```
+
 ## Useful read tools (verification)
 - `get_account_tree` — confirm COA structure
 - `list_accounts` — confirm accounts and IDs
@@ -73,7 +96,7 @@ For any tool call:
 - `list_transactions` / `get_transaction_by_external_id` — verify postings and idempotency behavior
 
 ## Minimal data contracts (what you should store)
-- Account IDs come from the seeded COA (don’t invent new ones via ad-hoc writes).
+- Account IDs come from the seeded COA or from `create_account` tool calls. Use `create_account` to add new accounts at runtime.
 - Snapshots: `(account_id, snapshot_date, balance)`
 - Obligations: `(name, account_id, cadence, expected_amount, next_due_date)`
 - Transactions: `(source_system, external_id, date, description, postings[])`

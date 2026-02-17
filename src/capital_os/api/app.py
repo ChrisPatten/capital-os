@@ -24,6 +24,7 @@ from capital_os.tools import (
     close_period,
     compute_consolidated_posture,
     compute_capital_posture,
+    create_account,
     create_or_update_obligation,
     get_config,
     get_account_balances,
@@ -47,6 +48,7 @@ app = FastAPI(title="Capital OS")
 CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 AUTH_TOKEN_HEADER = "x-capital-auth-token"
 WRITE_TOOLS = {
+    "create_account",
     "record_transaction_bundle",
     "record_balance_snapshot",
     "create_or_update_obligation",
@@ -59,6 +61,7 @@ WRITE_TOOLS = {
 }
 
 TOOL_HANDLERS = {
+    "create_account": create_account.handle,
     "record_transaction_bundle": record_transaction_bundle.handle,
     "record_balance_snapshot": record_balance_snapshot.handle,
     "create_or_update_obligation": create_or_update_obligation.handle,

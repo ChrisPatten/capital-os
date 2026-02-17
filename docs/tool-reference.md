@@ -14,6 +14,25 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
   - `detail.error = "validation_error"`
   - `detail.details = [pydantic errors]`
 
+## `create_account`
+- Handler: `src/capital_os/tools/create_account.py`
+- Domain service: `src/capital_os/domain/accounts/service.py::create_account_entry`
+- Input schema: `CreateAccountIn`
+- Output schema: `CreateAccountOut`
+
+### Behavior
+- Creates a new account in the chart of accounts.
+- Required fields: `code` (unique, 1-64 chars), `name` (1-256 chars), `account_type` (one of: `asset`, `liability`, `equity`, `income`, `expense`).
+- Optional fields: `parent_account_id`, `entity_id` (defaults to `entity-default`), `metadata` (JSON object, defaults to `{}`).
+- Validates `parent_account_id` exists before insert (returns 400 if not found).
+- Validates `entity_id` exists before insert (returns 400 if not found).
+- Rejects duplicate `code` values (returns 400).
+- Rejects account hierarchy cycles via DB trigger (returns 400).
+- Forbids unknown payload keys (`extra="forbid"`).
+- Returns `status = "committed"` with `account_id` and `output_hash` on success.
+- Logs event in same transaction (fail-closed).
+- Capability: `tools:write`.
+
 ## `record_transaction_bundle`
 - Handler: `src/capital_os/tools/record_transaction_bundle.py`
 - Domain service: `src/capital_os/domain/ledger/service.py::record_transaction_bundle`

@@ -113,7 +113,14 @@ development_status:
   12-3-mvp-agent-smoke-flow-and-runbook: done
   epic-12-retrospective: optional
 
-  epic-13: in-progress
+  epic-13: done
   13-1-create-account-tool: done
-  13-2-update-account-metadata-tool: ready-for-dev
+  13-2-update-account-metadata-tool: done
   epic-13-retrospective: optional
+
+  epic-14: backlog
+  14-1-chart-query-engine-and-data-aggregation: backlog
+  14-2-chart-specification-builder: backlog
+  14-3-generate-chart-tool-endpoint: backlog
+  14-4-chart-generation-integration-tests-and-examples: backlog
+  epic-14-retrospective: optional

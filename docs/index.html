@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capital OS — Deterministic Financial Truth Layer</title>
+  <meta name="description" content="Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger with schema-validated tool APIs for agent use.">
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background -->
+  <div class="ambient-bg">
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="glow glow-3"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <span class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="2" width="20" height="20" rx="4" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M7 12h10M12 7v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="logo-text">Capital OS</span>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#tools">Tools</a>
+        <a href="#guarantees">Guarantees</a>
+        <a href="#quickstart">Get Started</a>
+        <a href="https://github.com/chrispatten/capital-os" class="nav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+      </div>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Phase 1 — Ledger Core Foundation
+      </div>
+      <h1 class="hero-title">
+        The financial truth layer<br>
+        <span class="hero-gradient">built for agents.</span>
+      </h1>
+      <p class="hero-subtitle">
+        A deterministic, auditable double-entry ledger with schema-validated tool APIs.
+        Every transaction balanced. Every output reproducible. Every action traceable.
+      </p>
+      <div class="hero-actions">
+        <a href="#quickstart" class="btn btn-primary">
+          Get Started
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <a href="#architecture" class="btn btn-secondary">
+          View Architecture
+        </a>
+      </div>
+      <div class="hero-terminal">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="terminal-title">capital-os</span>
+        </div>
+        <div class="terminal-body">
+          <pre><code><span class="t-prompt">$</span> curl -X POST http://localhost:8000/tools/record_transaction_bundle \
+  -H <span class="t-string">"content-type: application/json"</span> \
+  -H <span class="t-string">"x-capital-auth-token: dev-admin-token"</span> \
+  -d <span class="t-string">'{
+    "source_system": "payroll",
+    "external_id": "payroll-2026-01",
+    "date": "2026-01-31T00:00:00Z",
+    "description": "January payroll",
+    "postings": [
+      {"account_id": "acct-expense", "amount": "15000.00", "currency": "USD"},
+      {"account_id": "acct-cash",    "amount": "-15000.00", "currency": "USD"}
+    ],
+    "correlation_id": "corr-payroll-001"
+  }'</span>
+
+<span class="t-comment">// Response</span>
+{
+  <span class="t-key">"status"</span>: <span class="t-string">"committed"</span>,
+  <span class="t-key">"transaction_id"</span>: <span class="t-string">"txn-a1b2c3d4"</span>,
+  <span class="t-key">"output_hash"</span>: <span class="t-string">"sha256:9f86d0..."</span>
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats bar -->
+  <section class="stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat">
+          <span class="stat-value">30+</span>
+          <span class="stat-label">Tool APIs</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">&lt;300ms</span>
+          <span class="stat-label">p95 Latency</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">100%</span>
+          <span class="stat-label">Deterministic</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">5</span>
+          <span class="stat-label">CI Quality Gates</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Core Capabilities</span>
+        <h2>Everything a financial agent needs.</h2>
+        <p>Capital OS provides the foundational primitives for deterministic financial operations — from double-entry bookkeeping to capital posture analysis.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Double-Entry Ledger</h3>
+          <p>Every transaction bundle is balanced before commit. Sum-to-zero enforcement at both service and database layers with defense-in-depth guarantees.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Append-Only Audit Trail</h3>
+          <p>Transaction history cannot be updated or deleted. Corrections use compensating entries. DB triggers enforce immutability at the storage layer.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Deterministic Replay</h3>
+          <p>Identical state + identical inputs = identical outputs. Canonical hashing with sorted keys, 4dp decimals, and UTC microsecond timestamps.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Idempotent Operations</h3>
+          <p>Scoped to <code>(source_system, external_id)</code>. Duplicate submissions return the canonical prior result — safe for retries and concurrent agents.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Capital Posture</h3>
+          <p>Real-time computation of liquidity ratios, reserve coverage, and risk band classification. Supports consolidated multi-entity posture views.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Spend Simulation</h3>
+          <p>Non-mutating projection engine for one-time and recurring spend scenarios. Period-level projections with deterministic output hashing.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Debt Analysis</h3>
+          <p>Deterministic liability prioritization with per-item score explanations covering interest cost, cashflow pressure, and payoff readiness.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Approval Workflows</h3>
+          <p>Policy-driven approval gates with threshold, category, entity, velocity, and risk-band matching. Multi-party quorum support built in.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="architecture" id="architecture">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">System Design</span>
+        <h2>Strict layering. Zero shortcuts.</h2>
+        <p>API to tools to domain services to repository. No direct bypass paths. Defense-in-depth at every boundary.</p>
+      </div>
+      <div class="arch-diagram">
+        <div class="arch-layer arch-api">
+          <div class="arch-label">API Layer</div>
+          <div class="arch-items">
+            <div class="arch-item">FastAPI</div>
+            <div class="arch-item">Auth &amp; RBAC</div>
+            <div class="arch-item">Schema Validation</div>
+          </div>
+        </div>
+        <div class="arch-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 5v14m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="arch-layer arch-tools">
+          <div class="arch-label">Tool Layer</div>
+          <div class="arch-items">
+            <div class="arch-item">Contract Translation</div>
+            <div class="arch-item">Error Mapping</div>
+            <div class="arch-item">Event Logging</div>
+          </div>
+        </div>
+        <div class="arch-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 5v14m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="arch-layer arch-domain">
+          <div class="arch-label">Domain Services</div>
+          <div class="arch-items">
+            <div class="arch-item">Accounts</div>
+            <div class="arch-item">Ledger</div>
+            <div class="arch-item">Posture</div>
+            <div class="arch-item">Simulation</div>
+            <div class="arch-item">Debt</div>
+            <div class="arch-item">Approval</div>
+            <div class="arch-item">Periods</div>
+            <div class="arch-item">Policy</div>
+            <div class="arch-item">Reconciliation</div>
+          </div>
+        </div>
+        <div class="arch-arrow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 5v14m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="arch-layer arch-db">
+          <div class="arch-label">Data Layer</div>
+          <div class="arch-items">
+            <div class="arch-item">SQLite + WAL</div>
+            <div class="arch-item">Append-Only Triggers</div>
+            <div class="arch-item">Migrations</div>
+          </div>
+        </div>
+      </div>
+      <div class="arch-sidebar">
+        <div class="arch-side-card">
+          <div class="arch-side-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round"/>
+              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h4>Observability</h4>
+          <p>Every tool invocation logged with correlation IDs, input/output hashes, duration, and actor context.</p>
+        </div>
+        <div class="arch-side-card">
+          <div class="arch-side-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h4>Security</h4>
+          <p>Header-token auth, capability-based authorization, correlation ID enforcement, zero-egress runtime.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools -->
+  <section class="tools-section" id="tools">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">API Surface</span>
+        <h2>30+ schema-validated tools.</h2>
+        <p>Every tool is a <code>POST /tools/{tool_name}</code> endpoint with Pydantic-validated contracts, deterministic responses, and full event logging.</p>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Write Tools
+          </h3>
+          <ul>
+            <li><code>record_transaction_bundle</code></li>
+            <li><code>record_balance_snapshot</code></li>
+            <li><code>create_or_update_obligation</code></li>
+            <li><code>create_account</code></li>
+            <li><code>update_account_metadata</code></li>
+            <li><code>close_period</code></li>
+            <li><code>lock_period</code></li>
+          </ul>
+        </div>
+        <div class="tool-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round"/></svg>
+            Compute Tools
+          </h3>
+          <ul>
+            <li><code>compute_capital_posture</code></li>
+            <li><code>compute_consolidated_posture</code></li>
+            <li><code>simulate_spend</code></li>
+            <li><code>analyze_debt</code></li>
+            <li><code>reconcile_account</code></li>
+          </ul>
+        </div>
+        <div class="tool-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Query Tools
+          </h3>
+          <ul>
+            <li><code>list_accounts</code></li>
+            <li><code>get_account_tree</code></li>
+            <li><code>get_account_balances</code></li>
+            <li><code>list_transactions</code></li>
+            <li><code>get_transaction_by_external_id</code></li>
+            <li><code>list_obligations</code></li>
+            <li><code>list_proposals</code></li>
+            <li><code>get_proposal</code></li>
+            <li><code>get_config</code></li>
+          </ul>
+        </div>
+        <div class="tool-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Governance Tools
+          </h3>
+          <ul>
+            <li><code>approve_proposed_transaction</code></li>
+            <li><code>reject_proposed_transaction</code></li>
+            <li><code>propose_config_change</code></li>
+            <li><code>approve_config_change</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guarantees -->
+  <section class="guarantees" id="guarantees">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Non-Negotiable</span>
+        <h2>Invariants enforced at every layer.</h2>
+        <p>These guarantees are constitutional — enforced in code, in the database, and in CI. No exceptions.</p>
+      </div>
+      <div class="guarantees-list">
+        <div class="guarantee">
+          <div class="guarantee-number">01</div>
+          <div class="guarantee-content">
+            <h3>Balanced Bundles</h3>
+            <p>Every committed transaction bundle satisfies <code>sum(postings.amount) == 0</code>. Enforced at service layer and by database constraint.</p>
+          </div>
+        </div>
+        <div class="guarantee">
+          <div class="guarantee-number">02</div>
+          <div class="guarantee-content">
+            <h3>Append-Only History</h3>
+            <p>Transaction, posting, and event-log records cannot be updated or deleted. Corrections are compensating entries. DB triggers reject mutations.</p>
+          </div>
+        </div>
+        <div class="guarantee">
+          <div class="guarantee-number">03</div>
+          <div class="guarantee-content">
+            <h3>Idempotent Writes</h3>
+            <p>Scoped to <code>(source_system, external_id)</code>. Duplicate submissions return the canonical prior result. Safe for concurrent agent retries.</p>
+          </div>
+        </div>
+        <div class="guarantee">
+          <div class="guarantee-number">04</div>
+          <div class="guarantee-content">
+            <h3>Monetary Precision</h3>
+            <p><code>NUMERIC(20,4)</code> with round-half-even normalization before persistence and hashing. No floating-point drift.</p>
+          </div>
+        </div>
+        <div class="guarantee">
+          <div class="guarantee-number">05</div>
+          <div class="guarantee-content">
+            <h3>Deterministic Outputs</h3>
+            <p>Identical persisted state + identical inputs produce identical <code>output_hash</code>. Verified by replay regression tests in CI.</p>
+          </div>
+        </div>
+        <div class="guarantee">
+          <div class="guarantee-number">06</div>
+          <div class="guarantee-content">
+            <h3>Fail-Closed Writes</h3>
+            <p>If event-log persistence fails, the entire write transaction rolls back. No silent observability gaps.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="tech-stack">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Tech Stack</span>
+        <h2>Simple. Robust. Auditable.</h2>
+      </div>
+      <div class="stack-grid">
+        <div class="stack-card">
+          <div class="stack-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Python 3.11+</h3>
+          <p>Type-hinted, Pydantic-validated domain logic with strict contracts.</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>FastAPI</h3>
+          <p>High-performance async API with automatic OpenAPI schema generation.</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>SQLite + WAL</h3>
+          <p>File-backed ACID storage with WAL mode for concurrency and append-only triggers.</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Pytest</h3>
+          <p>5-category test suite: unit, integration, replay, security, and performance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CI Quality Gates -->
+  <section class="ci-section">
+    <div class="container">
+      <div class="ci-content">
+        <div class="ci-text">
+          <span class="section-tag">Continuous Integration</span>
+          <h2>5 merge-blocking quality gates.</h2>
+          <p>Every pull request must pass all gates before merge. No exceptions, no overrides.</p>
+          <div class="ci-gates">
+            <div class="ci-gate">
+              <div class="ci-gate-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <strong>Full Test Suite</strong>
+                <span>Unit + integration + replay + security + perf</span>
+              </div>
+            </div>
+            <div class="ci-gate">
+              <div class="ci-gate-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <strong>Migration Reversibility</strong>
+                <span>Apply / rollback / re-apply cycle</span>
+              </div>
+            </div>
+            <div class="ci-gate">
+              <div class="ci-gate-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <strong>Determinism Regression</strong>
+                <span>Replay hash reproducibility</span>
+              </div>
+            </div>
+            <div class="ci-gate">
+              <div class="ci-gate-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <strong>Security Auth Surface</strong>
+                <span>Auth / authz / correlation enforcement</span>
+              </div>
+            </div>
+            <div class="ci-gate">
+              <div class="ci-gate-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <strong>Multi-Entity Gates</strong>
+                <span>Multi-entity replay and performance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ci-visual">
+          <div class="ci-pipeline">
+            <div class="ci-stage ci-pass">
+              <span class="ci-status-dot"></span>
+              tests
+            </div>
+            <div class="ci-connector"></div>
+            <div class="ci-stage ci-pass">
+              <span class="ci-status-dot"></span>
+              migrations
+            </div>
+            <div class="ci-connector"></div>
+            <div class="ci-stage ci-pass">
+              <span class="ci-status-dot"></span>
+              determinism
+            </div>
+            <div class="ci-connector"></div>
+            <div class="ci-stage ci-pass">
+              <span class="ci-status-dot"></span>
+              security
+            </div>
+            <div class="ci-connector"></div>
+            <div class="ci-stage ci-pass">
+              <span class="ci-status-dot"></span>
+              multi-entity
+            </div>
+            <div class="ci-connector"></div>
+            <div class="ci-stage ci-merge">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8m0-8L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              merge
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quickstart -->
+  <section class="quickstart" id="quickstart">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Quickstart</span>
+        <h2>Up and running in minutes.</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Clone &amp; Install</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" data-code="git clone https://github.com/chrispatten/capital-os.git
+cd capital-os
+pip install -e &quot;.[dev]&quot;">Copy</button>
+              </div>
+              <pre><code><span class="t-prompt">$</span> git clone https://github.com/chrispatten/capital-os.git
+<span class="t-prompt">$</span> cd capital-os
+<span class="t-prompt">$</span> pip install -e <span class="t-string">".[dev]"</span></code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Bootstrap Database</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" data-code="make init">Copy</button>
+              </div>
+              <pre><code><span class="t-prompt">$</span> make init
+<span class="t-comment"># Applies migrations + seeds Chart of Accounts</span></code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Start the Server</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" data-code="make run">Copy</button>
+              </div>
+              <pre><code><span class="t-prompt">$</span> make run
+<span class="t-comment"># Server running at http://127.0.0.1:8000</span>
+<span class="t-prompt">$</span> make health
+<span class="t-comment"># {"status": "healthy"}</span></code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h3>Record Your First Transaction</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" data-code='curl -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
+  -H "content-type: application/json" \
+  -H "x-capital-auth-token: dev-admin-token" \
+  -d &apos;{
+    "source_system": "manual",
+    "external_id": "opening-001",
+    "date": "2026-01-01T00:00:00Z",
+    "description": "Opening balance",
+    "postings": [
+      {"account_id": "<asset-id>", "amount": "10000.00", "currency": "USD"},
+      {"account_id": "<equity-id>", "amount": "-10000.00", "currency": "USD"}
+    ],
+    "correlation_id": "corr-001"
+  }&apos;'>Copy</button>
+              </div>
+              <pre><code><span class="t-prompt">$</span> curl -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
+  -H <span class="t-string">"content-type: application/json"</span> \
+  -H <span class="t-string">"x-capital-auth-token: dev-admin-token"</span> \
+  -d <span class="t-string">'{
+    "source_system": "manual",
+    "external_id": "opening-001",
+    "date": "2026-01-01T00:00:00Z",
+    "description": "Opening balance",
+    "postings": [
+      {"account_id": "&lt;asset-id&gt;", "amount": "10000.00", "currency": "USD"},
+      {"account_id": "&lt;equity-id&gt;", "amount": "-10000.00", "currency": "USD"}
+    ],
+    "correlation_id": "corr-001"
+  }'</span></code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h3>Run the Test Suite</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" data-code="pytest">Copy</button>
+              </div>
+              <pre><code><span class="t-prompt">$</span> pytest
+<span class="t-comment"># Runs unit, integration, replay, security, and perf tests</span></code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="2" width="20" height="20" rx="4" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M7 12h10M12 7v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span>Capital OS</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/chrispatten/capital-os" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/chrispatten/capital-os/blob/main/LICENSE.md" target="_blank" rel="noopener">MIT License</a>
+          <a href="https://github.com/chrispatten/capital-os/blob/main/docs/tool-reference.md" target="_blank" rel="noopener">API Reference</a>
+        </div>
+        <div class="footer-copy">
+          &copy; 2026 Chris Patten. Built with determinism.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

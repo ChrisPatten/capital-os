@@ -10,6 +10,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 
 ## Common Commands
 
+### Development (Local)
 ```bash
 # Install dependencies
 pip install -e ".[dev]"
@@ -52,6 +53,35 @@ python scripts/check_migration_cycle.py --db-path /tmp/capital-os-migration-cycl
 python3 scripts/import_coa.py config/coa.yaml --validate-only
 ```
 
+### Docker & MCP Server
+```bash
+# Install MCP dependencies
+pip install -e ".[mcp]"
+
+# Build MCP server container
+docker build -t capital-os-mcp .
+
+# Run MCP server container (connects to Claude Code/Desktop)
+docker run -i --rm -v capital-os-data:/app/data capital-os-mcp:latest
+
+# Run with custom auth token
+docker run -i --rm \
+  -v capital-os-data:/app/data \
+  -e CAPITAL_OS_AUTH_TOKEN=my-token \
+  capital-os-mcp:latest
+
+# Use with existing database file
+docker run -i --rm \
+  -v /path/to/capital_os.db:/app/data/capital_os.db \
+  capital-os-mcp:latest
+
+# Start with docker-compose
+docker-compose up
+
+# View MCP server logs
+docker logs <container-id>
+```
+
 ## Architecture
 
 **Strict layering:** API/tools -> domain services -> repository/DB. No direct API-to-DB bypass.
@@ -77,7 +107,13 @@ src/capital_os/
   schemas/               # Pydantic request/response contracts
   security/              # Auth (header token), authz (capability-based), correlation IDs
   config.py              # Typed env-driven settings
+
+mcp/                      # MCP (Model Context Protocol) server
+  server.py               # JSON-RPC 2.0 handler: exposes all 25 tools to Claude Code/Desktop
+  entrypoint.sh           # Container init: DB setup, backend start, MCP server exec
 ```
+
+**MCP Integration:** All 25 tools are exposed via `mcp/server.py` which runs in a Docker container. The MCP server proxies JSON-RPC 2.0 calls to the FastAPI backend on stdio. See `docs/docker-mcp-integration.md` for full documentation.
 
 ## Non-Negotiable Invariants
 
@@ -151,12 +187,14 @@ When instructions conflict, follow this order:
 | Variable | Default | Purpose |
 |---|---|---|
 | `CAPITAL_OS_DB_URL` | `sqlite:///./data/capital_os.db` | Database connection |
-| `CAPITAL_OS_AUTH_TOKEN` | `dev-admin-token` | Auth token for curl/smoke tests |
+| `CAPITAL_OS_AUTH_TOKEN` | `dev-admin-token` | Auth token for API calls |
 | `CAPITAL_OS_BALANCE_SOURCE_POLICY` | `best_available` | `ledger_only`, `snapshot_only`, or `best_available` |
 | `CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT` | `1000.0000` | Threshold for approval workflow |
 | `CAPITAL_OS_AUTH_TOKENS_JSON` | (built-in dev tokens) | JSON override for token->identity map |
 | `CAPITAL_OS_TOOL_CAPABILITIES_JSON` | (built-in defaults) | JSON override for tool->capability map |
 | `CAPITAL_OS_IDLE_SECONDS` | `300` | Idle auto-shutdown for `make serve-idle` |
+| `CAPITAL_OS_BASE_URL` | `http://127.0.0.1:8000` | Backend API endpoint (MCP server only) |
+| `CAPITAL_OS_DB_PATH` | `/app/data/capital_os.db` | Database file path inside container (MCP server only) |
 
 ## Runtime State
 

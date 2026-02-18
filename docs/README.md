@@ -7,6 +7,7 @@ This directory is the working documentation set for agents and developers implem
 ## Start Here
 - `docs/current-state.md`: What is implemented right now, what is in review, and what is not started.
 - `docs/tool-reference.md`: Tool contracts, endpoint behavior, and deterministic/error semantics.
+- `docs/docker-mcp-integration.md`: **NEW** — Docker containerization and MCP server integration with Claude Code/Desktop.
 - `docs/development-workflow.md`: Local setup, migrations, test execution, and sprint status update workflow.
 - `docs/mvp-bootstrap-agent-testing.md`: One-command MVP smoke flow and operator runbook for bootstrap + agent tool-path validation.
 - `docs/testing-matrix.md`: Requirement-to-test traceability with current coverage status.

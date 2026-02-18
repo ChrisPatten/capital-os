@@ -35,6 +35,8 @@ skills/            # Example SKILL.md files for Codex and Claude
 ```
 
 ## Quickstart
+
+### Local Development
 1. Install dependencies:
 ```bash
 pip install -e ".[dev]"
@@ -51,6 +53,17 @@ uvicorn capital_os.main:app --reload
 ```bash
 pytest
 ```
+
+### Docker + MCP (Claude Code/Desktop Integration)
+1. Build container:
+```bash
+docker build -t capital-os-mcp .
+```
+2. Run MCP server (integrates with Claude Desktop):
+```bash
+docker run -i --rm -v capital-os-data:/app/data capital-os-mcp:latest
+```
+See `docs/docker-mcp-integration.md` for full setup and configuration.
 
 ## Runtime Make Targets
 - Bootstrap database + COA seed:

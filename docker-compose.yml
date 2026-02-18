@@ -1,0 +1,13 @@
+services:
+  capital-os-mcp:
+    build: .
+    image: capital-os-mcp:latest
+    stdin_open: true
+    tty: false
+    volumes:
+      - capital-os-data:/app/data
+    environment:
+      - CAPITAL_OS_AUTH_TOKEN=${CAPITAL_OS_AUTH_TOKEN:-dev-admin-token}
+
+volumes:
+  capital-os-data:

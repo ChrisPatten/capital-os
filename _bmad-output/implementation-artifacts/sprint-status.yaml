@@ -124,3 +124,9 @@ development_status:
   14-3-generate-chart-tool-endpoint: backlog
   14-4-chart-generation-integration-tests-and-examples: backlog
   epic-14-retrospective: optional
+
+  epic-15: in-progress
+  15-1-shared-tool-executor-and-adapter-refactor: ready-for-dev
+  15-2-cli-command-surface-shell-integration-and-packaging: ready-for-dev
+  15-3-cli-http-parity-tests-and-operator-docs: ready-for-dev
+  epic-15-retrospective: optional

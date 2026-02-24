@@ -62,6 +62,19 @@ Stories:
 - 11.1 `export_ledger(date_range, format)` with hash-integrity markers
 - 11.2 `import_transaction_bundles(dry_run, strict)` with deterministic validation output
 - 11.3 Admin-only backup/restore operations with audit trail
+- 11.4 Database snapshot backup with integrity verification
+  - Expose an admin-gated `create_db_snapshot` tool that produces a point-in-time copy of the SQLite database file.
+  - Snapshot is written to a configurable target path (default: `data/snapshots/`) with a UTC timestamp suffix.
+  - Post-copy integrity check: compute SHA-256 of snapshot file and record it in the event log alongside snapshot path and file size.
+  - Snapshot metadata (path, size, hash, created_at, actor) persisted to a `db_snapshots` audit table (migration required).
+  - Tool requires `tools:admin` capability; returns structured response with snapshot path, hash, and size.
+  - Snapshot operation must not block concurrent reads; use SQLite `VACUUM INTO` or hot-backup semantics to avoid locking.
+  - Success and failure paths both emit structured event log entries.
+  - Acceptance criteria:
+    - Snapshot file is byte-for-byte consistent (verified by re-opening copy as valid SQLite).
+    - Integrity hash in event log matches independently computed SHA-256 of snapshot file.
+    - Unauthorized callers receive 403 with event-logged denial.
+    - p95 snapshot latency < 5s on reference dataset (100k postings / 50k transactions).
 
 ## Architecture Additions
 

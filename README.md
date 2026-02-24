@@ -2,7 +2,7 @@
 
 Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger and schema-validated tool APIs for agent use.
 
-## Current Status (2026-02-16)
+## Current Status (2026-02-23)
 - Core ledger foundation is implemented: accounts, balanced transaction bundles, idempotency, balance snapshots, obligations, and event logging.
 - Capital posture tooling is implemented (`compute_capital_posture`, `compute_consolidated_posture`).
 - Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
@@ -12,6 +12,7 @@ Capital OS is a deterministic, auditable financial truth layer built around a do
 - Epic 6 deterministic read/query surface is implemented (`list_transactions`, `get_transaction_by_external_id`, `list_obligations`, `list_proposals`, `get_proposal`, `get_config`), plus config-governance hooks (`propose_config_change`, `approve_config_change`).
 - Epic 5 hardening work is implemented: PRD traceability matrix, migration reversibility CI gate, and expanded determinism regression suite.
 - Epic 10 security controls are implemented: header-token authentication, config-driven tool authorization, and mandatory correlation IDs.
+- **Epic 15 CLI operator interface is implemented**: trusted local CLI (`capital-os`) for tool invocation without HTTP server.
 
 ## Tech Stack
 - Python 3.11+
@@ -64,6 +65,71 @@ docker build -t capital-os-mcp .
 docker run -i --rm -v capital-os-data:/app/data capital-os-mcp:latest
 ```
 See `docs/docker-mcp-integration.md` for full setup and configuration.
+
+## CLI (Trusted Local Channel)
+
+The `capital-os` CLI lets operators invoke tools locally without running the HTTP server. All core invariants (schema validation, deterministic hashing, event logging, transaction boundaries) are preserved through the shared runtime executor.
+
+### Install
+```bash
+# Development (editable, recommended)
+pip install -e .
+
+# Or with uv
+uv pip install -e .
+
+# Operator install via pipx (isolated environment)
+pipx install .
+```
+
+### Shell Completion
+```bash
+# bash
+capital-os --install-completion bash
+
+# zsh
+capital-os --install-completion zsh
+
+# fish
+capital-os --install-completion fish
+```
+
+To display the completion script without installing:
+```bash
+capital-os --show-completion bash
+```
+
+### Quickstart
+```bash
+# Check runtime / DB readiness
+capital-os health
+
+# Use a specific database file
+capital-os health --db-path /path/to/capital_os.db
+
+# List available tools
+capital-os tool list
+
+# Show schema for a tool
+capital-os tool schema list_accounts
+
+# Call a tool with inline JSON
+capital-os tool call list_accounts --json '{"correlation_id":"local-001"}'
+
+# Call a tool with a JSON file
+capital-os tool call create_account --json @payload.json
+
+# Call a tool from stdin
+echo '{"correlation_id":"local-002"}' | capital-os tool call list_accounts
+
+# Start the HTTP server
+capital-os serve
+```
+
+### Security Model
+- CLI is a **trusted local operator channel** — no auth token required.
+- All schema validation, event logging, and DB invariants are still enforced.
+- CLI executions are distinguishable in the event log via `authn_method = "trusted_cli"`.
 
 ## Runtime Make Targets
 - Bootstrap database + COA seed:

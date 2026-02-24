@@ -1,6 +1,6 @@
 # Development Workflow
 
-As of 2026-02-16.
+As of 2026-02-23.
 
 ## Environment and Startup
 - Python requirement: `>=3.11` (`pyproject.toml`).
@@ -23,6 +23,76 @@ As of 2026-02-16.
   - `.run/capital-os.url`
   - `.run/last_request.ts`
   - `.run/uvicorn.log`
+
+## CLI Workflow
+
+The `capital-os` CLI is a trusted local operator channel that invokes tools without the HTTP server.
+
+### Installation
+```bash
+# Editable dev install (recommended)
+pip install -e .
+
+# Operator install via pipx
+pipx install .
+
+# Fallback — direct module invocation
+python -m capital_os.cli.main
+```
+
+### Shell Completion Setup
+```bash
+# Install completion for your shell
+capital-os --install-completion bash
+capital-os --install-completion zsh
+capital-os --install-completion fish
+
+# Display completion script without installing
+capital-os --show-completion bash
+```
+
+### Selecting a Database (`--db-path`)
+All local-mode commands support `--db-path` to point at a specific SQLite file:
+```bash
+# Use default database (from CAPITAL_OS_DB_URL env or config)
+capital-os health
+
+# Target a specific database file
+capital-os health --db-path /path/to/capital_os.db
+capital-os tool list --db-path /tmp/test.db
+capital-os tool call list_accounts --json '{"correlation_id":"c1"}' --db-path /tmp/test.db
+```
+
+A missing or non-file path produces structured JSON on stderr and exits with code `1`.
+
+### Common CLI Commands
+```bash
+# Health check
+capital-os health
+
+# List registered tools
+capital-os tool list
+
+# Show tool schema
+capital-os tool schema record_transaction_bundle
+
+# Invoke a tool — inline JSON
+capital-os tool call list_accounts --json '{"correlation_id":"local-001"}'
+
+# Invoke a tool — JSON file
+capital-os tool call create_account --json @payload.json
+
+# Invoke a tool — stdin
+echo '{"correlation_id":"local-002"}' | capital-os tool call list_accounts
+
+# Start HTTP server
+capital-os serve
+capital-os serve --host 0.0.0.0 --port 9000
+```
+
+### Exit-Code Convention
+- `0` — success (result JSON on stdout)
+- `1` — failure (structured error JSON on stderr)
 
 ## Migration Workflow
 - Apply migrations in order:

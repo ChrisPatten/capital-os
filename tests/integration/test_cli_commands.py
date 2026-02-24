@@ -26,7 +26,6 @@ from typing import Sequence
 import pytest
 
 from capital_os.config import get_settings
-from capital_os.db.testing import reset_test_database
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -520,7 +519,11 @@ def test_cli_event_log_records_trusted_context(db_available: bool) -> None:
 
 
 def test_cli_http_output_hash_parity(db_available: bool) -> None:
-    """Identical payload + DB state must yield identical output_hash via CLI and HTTP."""
+    """Identical payload + DB state must yield identical output_hash via CLI and HTTP.
+
+    For read tools, we run both adapters against the SAME DB state without resetting.
+    Since list_accounts is non-mutating, both calls see identical state.
+    """
     if not db_available:
         pytest.skip("database unavailable")
 
@@ -537,10 +540,7 @@ def test_cli_http_output_hash_parity(db_available: bool) -> None:
     assert http_resp.status_code == 200
     http_hash = http_resp.json()["output_hash"]
 
-    # Reset DB so CLI call starts from identical state
-    reset_test_database()
-
-    # CLI call
+    # CLI call on the SAME DB state (no reset - both see identical data)
     cli_result = _run(
         [
             "tool", "call", READ_TOOL,
@@ -553,6 +553,71 @@ def test_cli_http_output_hash_parity(db_available: bool) -> None:
 
     assert cli_hash == http_hash, (
         f"output_hash mismatch — CLI: {cli_hash!r}, HTTP: {http_hash!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# HTTP / CLI output_hash parity — write tool (AC: 1, 2)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_http_output_hash_parity_write_tool(db_available: bool) -> None:
+    """Identical idempotency key yields identical output_hash via CLI and HTTP.
+
+    For write tools with idempotency (record_transaction_bundle), both calls
+    share the same DB. The first call commits; the second sees idempotent-replay
+    returning the stored canonical response and output_hash.
+    """
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from fastapi.testclient import TestClient
+    from capital_os.api.app import app
+    from capital_os.db.session import transaction
+    from capital_os.domain.ledger.repository import create_account
+    from tests.support.auth import AUTH_HEADERS
+
+    # Seed accounts required for balanced postings
+    with transaction() as conn:
+        asset_id = create_account(conn, {"code": "parity-9910", "name": "Asset", "account_type": "asset"})
+        equity_id = create_account(conn, {"code": "parity-9911", "name": "Equity", "account_type": "equity"})
+
+    corr_id = "cli-http-parity-write-001"
+    payload = {
+        "source_system": "parity-test",
+        "external_id": "tx-parity-001",
+        "date": "2026-01-01T00:00:00Z",
+        "description": "Parity test transaction",
+        "postings": [
+            {"account_id": asset_id, "amount": "100.0000", "currency": "USD"},
+            {"account_id": equity_id, "amount": "-100.0000", "currency": "USD"},
+        ],
+        "correlation_id": corr_id,
+    }
+
+    # HTTP call → commits transaction
+    client = TestClient(app, headers=AUTH_HEADERS)
+    http_resp = client.post("/tools/record_transaction_bundle", json=payload)
+    assert http_resp.status_code == 200
+    http_body = http_resp.json()
+    assert http_body["status"] == "committed"
+    http_hash = http_body["output_hash"]
+
+    # CLI call with SAME idempotency key → idempotent-replay returns stored hash
+    cli_result = _run(
+        [
+            "tool", "call", "record_transaction_bundle",
+            "--json", json.dumps(payload),
+            "--db-path", _db_path(),
+        ],
+    )
+    assert cli_result.returncode == 0
+    cli_body = json.loads(cli_result.stdout)
+    assert cli_body["status"] == "idempotent-replay"
+    cli_hash = cli_body["output_hash"]
+
+    assert cli_hash == http_hash, (
+        f"write tool output_hash mismatch — CLI: {cli_hash!r}, HTTP: {http_hash!r}"
     )
 
 

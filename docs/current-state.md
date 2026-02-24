@@ -1,9 +1,18 @@
 # Current Implementation State
 
-As of 2026-02-16.
+As of 2026-02-23.
 
 ## Delivery Snapshot
 - Runtime stack is active: Python 3.11+, FastAPI transport, SQLite canonical store, Pytest suite.
+- **Trusted local CLI adapter** is implemented and available via the `capital-os` console script (Epic 15):
+  - `capital-os health` — local DB readiness check.
+  - `capital-os tool list` — enumerate registered tools.
+  - `capital-os tool schema <tool_name>` — display input/output schema.
+  - `capital-os tool call <tool_name>` — invoke a tool locally (trusted channel, no auth token required).
+  - `capital-os serve` — start the HTTP server via CLI convenience wrapper.
+  - All local-mode commands support `--db-path` for explicit database file selection.
+  - CLI executes through the same shared runtime executor as the HTTP adapter, preserving all invariants.
+  - CLI invocations are distinguishable in the event log via `actor_id = "local-cli"`, `authn_method = "trusted_cli"`.
 - Ledger core foundations are implemented: accounts, transactions/postings, snapshots, obligations, event log, hashing, idempotency.
 - Capital posture tooling from Epic 1 is implemented and tested.
 - Spend simulation tooling from Epic 2 is implemented and tested.
@@ -68,9 +77,13 @@ As of 2026-02-16.
   - `12-1-bootstrap-coa-seed-path`: `done`
   - `12-2-makefile-runtime-controls-and-serve-idle`: `done`
   - `12-3-mvp-agent-smoke-flow-and-runbook`: `done`
-  - `epic-13`: `in-progress`
+  - `epic-13`: `done`
   - `13-1-create-account-tool`: `done`
-  - `13-2-update-account-metadata-tool`: `ready-for-dev`
+  - `13-2-update-account-metadata-tool`: `done`
+  - `epic-15`: `in-progress`
+  - `15-1-shared-tool-executor-and-adapter-refactor`: `done`
+  - `15-2-cli-command-surface-shell-integration-and-packaging`: `done`
+  - `15-3-cli-http-parity-tests-and-operator-docs`: `done`
   - `epic-7`: `done`
   - `7-1-reconciliation-domain-and-tool`: `done`
   - `7-2-truth-selection-policy-wiring`: `done`
@@ -78,9 +91,16 @@ As of 2026-02-16.
 
 ## Implemented Service Surface
 - API entrypoint: `src/capital_os/api/app.py`
+- CLI entrypoint: `src/capital_os/cli/main.py` (console script: `capital-os`)
 - Routes:
   - `GET /health`
   - `POST /tools/{tool_name}`
+- CLI commands:
+  - `capital-os health`
+  - `capital-os tool list`
+  - `capital-os tool schema <tool_name>`
+  - `capital-os tool call <tool_name>`
+  - `capital-os serve`
 - Registered tools:
   - `create_account`
   - `record_transaction_bundle`

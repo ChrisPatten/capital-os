@@ -1,6 +1,42 @@
 # Tool Reference
 
-As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_os/api/app.py`.
+As of 2026-02-23, the service exposes both an HTTP API (`POST /tools/{tool_name}`) and a trusted local CLI (`capital-os tool call <tool_name>`).
+
+## Adapter Overview
+
+### HTTP Adapter
+- Endpoint: `POST /tools/{tool_name}`
+- Requires `x-capital-auth-token` and `x-correlation-id` (or `correlation_id` in body) headers.
+- Returns JSON with HTTP status codes.
+
+### CLI Adapter (Trusted Local Channel)
+- Command: `capital-os tool call <tool_name> --json '<payload>'`
+- No auth token required — CLI is a trusted local operator channel.
+- All schema validation, event logging, and DB invariants are preserved.
+- Installs as a console script: `pip install -e .` or `pipx install .`
+- Success: canonical JSON payload on stdout, exit code `0`.
+- Failure: structured error JSON on stderr, exit code `1`.
+
+#### CLI Quick Reference
+```bash
+# List available tools
+capital-os tool list
+
+# Show tool schema
+capital-os tool schema <tool_name>
+
+# Call a tool with inline JSON
+capital-os tool call <tool_name> --json '{"correlation_id":"local-001"}'
+
+# Call a tool with a JSON file
+capital-os tool call <tool_name> --json @payload.json
+
+# Call a tool from stdin
+echo '{"correlation_id":"local-002"}' | capital-os tool call <tool_name>
+
+# Use a specific database
+capital-os tool call <tool_name> --json '{}' --db-path /path/to/capital_os.db
+```
 
 ## Common Contract Notes
 - Input validation is done with Pydantic schemas in `src/capital_os/schemas/tools.py`.
@@ -32,6 +68,25 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Returns `status = "committed"` with `account_id` and `output_hash` on success.
 - Logs event in same transaction (fail-closed).
 - Capability: `tools:write`.
+
+### CLI Invocation (Local Trusted Channel)
+```bash
+# Inline JSON
+capital-os tool call create_account --json '{
+  "code": "1100",
+  "name": "Cash",
+  "account_type": "asset",
+  "correlation_id": "local-001"
+}'
+
+# From file
+capital-os tool call create_account --json @create_account.json
+
+# With explicit DB path
+capital-os tool call create_account \
+  --json '{"code":"1100","name":"Cash","account_type":"asset","correlation_id":"local-001"}' \
+  --db-path /path/to/capital_os.db
+```
 
 ## `update_account_metadata`
 - Handler: `src/capital_os/tools/update_account_metadata.py`
@@ -78,6 +133,21 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
   - `status = "committed"` on first commit.
   - `status = "idempotent-replay"` on duplicate key replay.
   - `status = "proposed"` for above-threshold requests (no ledger mutation).
+
+### CLI Invocation (Local Trusted Channel)
+```bash
+capital-os tool call record_transaction_bundle --json '{
+  "source_system": "example",
+  "external_id": "tx-001",
+  "date": "2026-01-01T00:00:00Z",
+  "description": "Opening balance",
+  "postings": [
+    {"account_id": "<asset-account-id>", "amount": "100.00", "currency": "USD"},
+    {"account_id": "<equity-account-id>", "amount": "-100.00", "currency": "USD"}
+  ],
+  "correlation_id": "local-001"
+}'
+```
 
 ## `record_balance_snapshot`
 - Handler: `src/capital_os/tools/record_balance_snapshot.py`
@@ -234,6 +304,18 @@ As of 2026-02-16, the service exposes `POST /tools/{tool_name}` in `src/capital_
 - Cursor is canonical opaque payload over `{v, code, account_id}`.
 - Malformed cursor returns deterministic `422` validation error.
 - Emits event logs for success and validation failures.
+
+### CLI Invocation (Local Trusted Channel)
+```bash
+# List all accounts
+capital-os tool call list_accounts --json '{"correlation_id": "local-001"}'
+
+# With pagination
+capital-os tool call list_accounts --json '{"correlation_id": "local-002", "limit": 20}'
+
+# Pipe to jq for formatting
+capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq .accounts
+```
 
 ## `get_account_tree`
 - Handler: `src/capital_os/tools/get_account_tree.py`

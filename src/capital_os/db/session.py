@@ -18,18 +18,22 @@ def _sqlite_path_from_url(db_url: str) -> str:
 
 def _connect(read_only: bool = False) -> sqlite3.Connection:
     db_path = _sqlite_path_from_url(get_settings().db_url)
-    if read_only:
-        uri = f"file:{db_path}?mode=ro"
-        conn = sqlite3.connect(uri, uri=True)
-    else:
-        path = Path(db_path)
+    path = Path(db_path)
+    if not read_only:
         path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(db_path)
 
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
+    if read_only:
+        # Use query_only pragma instead of mode=ro URI to avoid WAL shm-file
+        # creation failures on freshly-reset databases.  Any write attempt
+        # still raises sqlite3.OperationalError ("attempt to write a readonly
+        # database"), preserving the security boundary tested in
+        # tests/security/test_db_role_boundaries.py.
+        conn.execute("PRAGMA query_only = ON")
     return conn
 
 

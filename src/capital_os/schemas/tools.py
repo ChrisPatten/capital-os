@@ -198,6 +198,7 @@ class CreateOrUpdateObligationIn(BaseModel):
     variability_flag: bool = False
     next_due_date: date
     metadata: dict = Field(default_factory=dict)
+    active: bool = True
     entity_id: str = DEFAULT_ENTITY_ID
     correlation_id: str
 
@@ -205,6 +206,25 @@ class CreateOrUpdateObligationIn(BaseModel):
 class CreateOrUpdateObligationOut(BaseModel):
     status: Literal["created", "updated"]
     obligation_id: str
+    active: bool
+    correlation_id: str
+    output_hash: str
+
+
+class FulfillObligationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    obligation_id: str
+    fulfilled_by_transaction_id: str | None = None
+    fulfilled_at: datetime | None = None
+    correlation_id: str
+
+
+class FulfillObligationOut(BaseModel):
+    status: Literal["fulfilled", "already_fulfilled"]
+    obligation_id: str
+    fulfilled_by_transaction_id: str | None
+    fulfilled_at: str | None
     correlation_id: str
     output_hash: str
 

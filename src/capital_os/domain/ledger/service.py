@@ -20,6 +20,7 @@ from capital_os.domain.ledger.repository import (
     save_transaction_response,
     upsert_balance_snapshot,
     upsert_obligation,
+    fulfill_obligation as _repo_fulfill_obligation,
 )
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
@@ -232,10 +233,11 @@ def create_or_update_obligation(payload: dict) -> dict:
     started = perf_counter()
     input_hash = payload_hash(payload)
     with transaction() as conn:
-        obligation_id, status = upsert_obligation(conn, payload)
+        obligation_id, status, active = upsert_obligation(conn, payload)
         response = {
             "status": status,
             "obligation_id": obligation_id,
+            "active": active,
             "correlation_id": payload["correlation_id"],
         }
         output_hash = payload_hash(response)
@@ -243,6 +245,29 @@ def create_or_update_obligation(payload: dict) -> dict:
         log_event(
             conn,
             tool_name="create_or_update_obligation",
+            correlation_id=payload["correlation_id"],
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="ok",
+        )
+        return response
+
+
+def fulfill_obligation(payload: dict) -> dict:
+    started = perf_counter()
+    input_hash = payload_hash(payload)
+    with transaction() as conn:
+        result = _repo_fulfill_obligation(conn, payload)
+        response = {
+            **result,
+            "correlation_id": payload["correlation_id"],
+        }
+        output_hash = payload_hash(response)
+        response["output_hash"] = output_hash
+        log_event(
+            conn,
+            tool_name="fulfill_obligation",
             correlation_id=payload["correlation_id"],
             input_hash=input_hash,
             output_hash=output_hash,

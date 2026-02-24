@@ -193,3 +193,38 @@ Dependencies:
 - All stories have owners, estimates, and acceptance tests linked.
 - Critical path stories are marked ready with no unresolved dependency ambiguity.
 - PRD gap set is reduced to zero for FR-06, FR-07, FR-08, FR-11 and related SC/NFR items.
+---
+
+## Epic E16: Obligation Lifecycle (2026-02-24)
+
+Priority: P1
+Goal: Close the obligation lifecycle gap — obligations had no mechanism to be cleared once paid.
+
+### Story E16-S1: `create_or_update_obligation` — active flag support
+Why: Agents need to deactivate obligations via the standard upsert path without a separate tool.
+Deliverables:
+- Add optional `active: bool = True` field to `CreateOrUpdateObligationIn`.
+- Update `upsert_obligation` repository to honor `active` instead of hard-coding `active=1`.
+- Propagate `active` field through service response and `CreateOrUpdateObligationOut`.
+- Migration `0009_obligation_fulfillment.sql`: add `fulfilled_by_transaction_id TEXT` and `fulfilled_at TEXT` columns.
+Acceptance Criteria:
+- Calling `create_or_update_obligation` with `active: false` sets `active=0` in the DB.
+- Existing behavior (no `active` field) defaults to `active=1` — no regression.
+- `CreateOrUpdateObligationOut` returns current `active` state.
+Status: done (2026-02-24)
+
+### Story E16-S2: `fulfill_obligation` tool
+Why: First-class tool for marking an obligation paid, optionally linking the payment transaction.
+Deliverables:
+- `FulfillObligationIn` schema: `obligation_id`, optional `fulfilled_by_transaction_id`, optional `fulfilled_at`, `correlation_id`.
+- `FulfillObligationOut` schema: `status` (`fulfilled` | `already_fulfilled`), `obligation_id`, `fulfilled_by_transaction_id`, `fulfilled_at`, `correlation_id`, `output_hash`.
+- `fulfill_obligation` repository function: sets `active=0`, writes `fulfilled_by_transaction_id` and `fulfilled_at`; idempotent (returns `already_fulfilled` if already inactive).
+- Domain service: wraps DB call, emits event log, produces deterministic `output_hash`.
+- Tool handler: `src/capital_os/tools/fulfill_obligation.py`.
+- Registered in `execute_tool.py` (`WRITE_TOOLS`, `TOOL_HANDLERS`), `config.py` (`tools:write`), and `mcp/server.py`.
+Acceptance Criteria:
+- Calling `fulfill_obligation` on an active obligation sets `active=0` and records `fulfilled_by_transaction_id`.
+- Second call returns `status=already_fulfilled` without mutation.
+- Event log is written on both success and failure paths.
+- `fulfilled_by_transaction_id` is optional; omit to deactivate without linking a transaction.
+Status: done (2026-02-24)

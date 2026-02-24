@@ -91,9 +91,57 @@ capital-os tool call create_or_update_obligation --json '{
   "account_id": "<account_id>",
   "cadence": "monthly",
   "expected_amount": "3200.0000",
-  "currency": "USD",
   "next_due_date": "2026-03-01",
   "correlation_id": "obl-001"
+}'
+```
+
+To deactivate an obligation directly (e.g. cancelled before payment), pass `"active": false`.
+
+### Step 2a — Mark an obligation as paid (`fulfill_obligation`)
+
+When a payment is made, record the transaction first, then link it to the obligation:
+
+```bash
+# 1. Record the payment transaction
+capital-os tool call record_transaction_bundle --json '{
+  "source_system": "manual",
+  "external_id": "rent-2026-03-01",
+  "date": "2026-03-01T00:00:00Z",
+  "description": "March rent payment",
+  "postings": [
+    {"account_id": "<liability_account_id>", "amount": "3187.5000", "currency": "USD"},
+    {"account_id": "<asset_account_id>",    "amount": "-3187.5000", "currency": "USD"}
+  ],
+  "correlation_id": "txn-rent-mar"
+}'
+
+# 2. Fulfill the obligation, linking the transaction
+capital-os tool call fulfill_obligation --json '{
+  "obligation_id": "<obligation_id>",
+  "fulfilled_by_transaction_id": "<transaction_id from step 1>",
+  "correlation_id": "obl-fulfill-001"
+}'
+```
+
+Response:
+- `status`: `"fulfilled"` on success, `"already_fulfilled"` if called again (idempotent).
+- `fulfilled_by_transaction_id`: the linked transaction ID.
+- `fulfilled_at`: UTC timestamp recorded at fulfillment.
+
+Omit `fulfilled_by_transaction_id` to deactivate without linking a payment (e.g. obligation was waived).
+
+To true up the estimated amount before fulfilling:
+
+```bash
+capital-os tool call create_or_update_obligation --json '{
+  "source_system": "manual",
+  "name": "rent",
+  "account_id": "<account_id>",
+  "cadence": "monthly",
+  "expected_amount": "3187.5000",
+  "next_due_date": "2026-03-01",
+  "correlation_id": "obl-trueup-001"
 }'
 ```
 
@@ -147,6 +195,9 @@ capital-os tool call get_transaction_by_external_id --json '{
 
 # Upcoming obligations
 capital-os tool call list_obligations --json '{"active_only": true, "correlation_id": "q-006"}'
+
+# Fulfilled/inactive obligations
+capital-os tool call list_obligations --json '{"active_only": false, "correlation_id": "q-007"}'
 ```
 
 ## Account metadata update (merge-patch)

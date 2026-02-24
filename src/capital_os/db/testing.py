@@ -3,19 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from capital_os.config import get_settings
-from capital_os.db.session import run_sql_file
+from capital_os.db.migrations import apply_pending_migrations
 
 
-_MIGRATION_FILES = (
-    "0001_ledger_core.sql",
-    "0002_security_and_append_only.sql",
-    "0003_approval_gates.sql",
-    "0004_read_query_indexes.sql",
-    "0005_entity_dimension.sql",
-    "0006_periods_policies.sql",
-    "0007_query_surface_indexes.sql",
-    "0008_api_security_runtime_controls.sql",
-)
+_MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "migrations"
 
 
 def _sqlite_path_from_db_url(db_url: str) -> Path:
@@ -35,6 +26,6 @@ def reset_test_database() -> None:
     for suffix in ("", "-wal", "-shm"):
         Path(f"{db_path}{suffix}").unlink(missing_ok=True)
 
-    migrations_dir = Path(__file__).resolve().parents[3] / "migrations"
-    for migration_name in _MIGRATION_FILES:
-        run_sql_file(migrations_dir / migration_name)
+    # Deleting the DB also removes schema_migrations, so all migrations are
+    # treated as pending and applied fresh — correct for test isolation.
+    apply_pending_migrations(db_path, _MIGRATIONS_DIR)

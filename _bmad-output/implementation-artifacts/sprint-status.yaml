@@ -131,3 +131,8 @@ development_status:
   15-2-cli-command-surface-shell-integration-and-packaging: done
   15-3-cli-http-parity-tests-and-operator-docs: done
   epic-15-retrospective: optional
+
+  epic-16: done
+  16-1-obligation-deactivation-and-active-flag: done
+  16-2-fulfill-obligation-tool: done
+  epic-16-retrospective: optional

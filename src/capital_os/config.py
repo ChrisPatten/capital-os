@@ -26,6 +26,7 @@ DEFAULT_TOOL_CAPABILITIES = {
     "record_transaction_bundle": "tools:write",
     "record_balance_snapshot": "tools:write",
     "create_or_update_obligation": "tools:write",
+    "fulfill_obligation": "tools:write",
     "compute_capital_posture": "tools:read",
     "compute_consolidated_posture": "tools:read",
     "simulate_spend": "tools:read",

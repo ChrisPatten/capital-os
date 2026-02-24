@@ -10,11 +10,22 @@ SRC_DIR = ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from capital_os.db.session import run_sql_file
+from capital_os.config import get_settings
+from capital_os.db.migrations import apply_pending_migrations
+
+
+def _db_path_from_settings() -> Path:
+    db_url = get_settings().db_url
+    if not db_url.startswith("sqlite:///"):
+        raise ValueError("CAPITAL_OS_DB_URL must use sqlite:/// URL format")
+    raw = db_url.removeprefix("sqlite:///")
+    if not raw:
+        raise ValueError("CAPITAL_OS_DB_URL sqlite path cannot be empty")
+    return Path(raw)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Apply forward SQL migrations in order")
+    parser = argparse.ArgumentParser(description="Apply pending SQL migrations in order (idempotent)")
     parser.add_argument(
         "--migrations-dir",
         default=str(ROOT / "migrations"),
@@ -23,23 +34,21 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def forward_migrations(migrations_dir: Path) -> list[Path]:
-    migrations = sorted(
-        path
-        for path in migrations_dir.glob("[0-9][0-9][0-9][0-9]_*.sql")
-        if not path.name.endswith(".rollback.sql")
-    )
-    if not migrations:
-        raise RuntimeError(f"no forward migrations found in {migrations_dir}")
-    return migrations
-
-
 def main() -> int:
     args = parse_args()
+    db_path = _db_path_from_settings()
     migrations_dir = Path(args.migrations_dir)
-    for migration in forward_migrations(migrations_dir):
-        run_sql_file(migration)
-        print(f"applied: {migration.name}")
+
+    applied, skipped = apply_pending_migrations(db_path, migrations_dir)
+
+    for name in skipped:
+        print(f"skipped (already applied): {name}")
+    for name in applied:
+        print(f"applied: {name}")
+
+    if not applied and not skipped:
+        print("no migrations found")
+
     return 0
 
 

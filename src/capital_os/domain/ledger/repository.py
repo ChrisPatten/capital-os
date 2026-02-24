@@ -126,7 +126,8 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
     return snapshot_id, "recorded"
 
 
-def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
+def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
+    active_flag = 1 if payload.get("active", True) else 0
     existing = conn.execute(
         "SELECT obligation_id FROM obligations WHERE source_system=? AND name=? AND account_id=?",
         (payload["source_system"], payload["name"], payload["account_id"]),
@@ -136,7 +137,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
         conn.execute(
             """
             UPDATE obligations
-            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, entity_id=?, active=1, updated_at=CURRENT_TIMESTAMP
+            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, entity_id=?, active=?, updated_at=CURRENT_TIMESTAMP
             WHERE obligation_id=?
             """,
             (
@@ -146,10 +147,11 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
                 str(payload["next_due_date"]),
                 json.dumps(payload.get("metadata", {}), separators=(",", ":")),
                 payload.get("entity_id", DEFAULT_ENTITY_ID),
+                active_flag,
                 obligation_id,
             ),
         )
-        return obligation_id, "updated"
+        return obligation_id, "updated", bool(active_flag)
 
     obligation_id = str(uuid4())
     conn.execute(
@@ -157,7 +159,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
         INSERT INTO obligations (
             obligation_id, source_system, name, account_id, cadence, expected_amount,
             variability_flag, next_due_date, metadata, active, entity_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,1,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             obligation_id,
@@ -169,10 +171,53 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str]:
             1 if payload.get("variability_flag", False) else 0,
             str(payload["next_due_date"]),
             json.dumps(payload.get("metadata", {}), separators=(",", ":")),
+            active_flag,
             payload.get("entity_id", DEFAULT_ENTITY_ID),
         ),
     )
-    return obligation_id, "created"
+    return obligation_id, "created", bool(active_flag)
+
+
+def fulfill_obligation(conn, payload: dict[str, Any]) -> dict[str, Any]:
+    """Set active=0 on an obligation, recording fulfillment linkage."""
+    existing = conn.execute(
+        "SELECT obligation_id, active, fulfilled_by_transaction_id, fulfilled_at FROM obligations WHERE obligation_id=?",
+        (payload["obligation_id"],),
+    ).fetchone()
+    if not existing:
+        raise ValueError(f"obligation not found: {payload['obligation_id']}")
+
+    if not existing["active"]:
+        return {
+            "status": "already_fulfilled",
+            "obligation_id": str(existing["obligation_id"]),
+            "fulfilled_by_transaction_id": existing["fulfilled_by_transaction_id"],
+            "fulfilled_at": existing["fulfilled_at"],
+        }
+
+    from datetime import datetime, timezone
+    fulfilled_at = payload.get("fulfilled_at")
+    if fulfilled_at is None:
+        fulfilled_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+    elif not isinstance(fulfilled_at, str):
+        fulfilled_at = fulfilled_at.isoformat(timespec="microseconds")
+
+    fulfilled_by_transaction_id = payload.get("fulfilled_by_transaction_id")
+
+    conn.execute(
+        """
+        UPDATE obligations
+        SET active=0, fulfilled_by_transaction_id=?, fulfilled_at=?, updated_at=CURRENT_TIMESTAMP
+        WHERE obligation_id=?
+        """,
+        (fulfilled_by_transaction_id, fulfilled_at, str(existing["obligation_id"])),
+    )
+    return {
+        "status": "fulfilled",
+        "obligation_id": str(existing["obligation_id"]),
+        "fulfilled_by_transaction_id": fulfilled_by_transaction_id,
+        "fulfilled_at": fulfilled_at,
+    }
 
 
 def create_account(conn, payload: dict[str, Any]) -> str:

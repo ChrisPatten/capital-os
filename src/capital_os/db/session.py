@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
+from urllib.parse import quote
 
 from capital_os.config import get_settings
 
@@ -35,6 +36,28 @@ def _connect(read_only: bool = False) -> sqlite3.Connection:
         # tests/security/test_db_role_boundaries.py.
         conn.execute("PRAGMA query_only = ON")
     return conn
+
+
+def probe_ready_noncreating() -> None:
+    """Verify the configured SQLite DB is reachable without creating files.
+
+    Used by health/readiness endpoints so a misconfigured path does not create
+    an empty SQLite database as a side effect.
+    """
+    db_path = _sqlite_path_from_url(get_settings().db_url)
+    path = Path(db_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Database file not found: {path}")
+    if not path.is_file():
+        raise IsADirectoryError(f"Database path is not a file: {path}")
+
+    # Use SQLite URI read-only mode to avoid implicit file creation.
+    uri = f"file:{quote(str(path.resolve()))}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        conn.execute("SELECT 1 AS ok").fetchone()
+    finally:
+        conn.close()
 
 
 @contextmanager

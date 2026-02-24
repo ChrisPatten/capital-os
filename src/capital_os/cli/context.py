@@ -38,10 +38,9 @@ def configure_db_path(db_path: str | None) -> None:
 def ensure_db_ready() -> None:
     """Verify the configured database is reachable."""
     try:
-        from capital_os.db.session import transaction
+        from capital_os.db.session import probe_ready_noncreating
 
-        with transaction() as conn:
-            conn.execute("SELECT 1 AS ok").fetchone()
+        probe_ready_noncreating()
     except Exception as exc:
         _die(f"Database not ready: {exc}")
 

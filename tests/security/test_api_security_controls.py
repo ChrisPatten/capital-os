@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,6 +18,20 @@ def test_health_route_remains_unauthenticated(db_available):
     client = TestClient(app)
     response = client.get("/health")
     assert response.status_code == 200
+
+
+def test_health_route_missing_db_does_not_create_file(monkeypatch, tmp_path: Path):
+    missing_db = tmp_path / "ledger.db"
+    monkeypatch.setenv("CAPITAL_OS_DB_URL", f"sqlite:///{missing_db}")
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app)
+        response = client.get("/health")
+        assert response.status_code == 503
+        assert response.json()["detail"]["status"] == "down"
+        assert not missing_db.exists()
+    finally:
+        get_settings.cache_clear()
 
 
 def test_tools_reject_missing_authentication_and_log_event(db_available):

@@ -5,7 +5,7 @@ from time import perf_counter
 
 from fastapi import FastAPI, HTTPException, Request
 
-from capital_os.db.session import transaction
+from capital_os.db.session import probe_ready_noncreating, transaction
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 from capital_os.runtime.execute_tool import TOOL_HANDLERS, execute_tool
@@ -66,8 +66,7 @@ def _emit_event(
 @app.get("/health")
 def health() -> dict:
     try:
-        with transaction() as conn:
-            conn.execute("SELECT 1 AS ok").fetchone()
+        probe_ready_noncreating()
     except Exception as exc:
         raise HTTPException(status_code=503, detail={"status": "down", "error": str(exc)}) from exc
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}

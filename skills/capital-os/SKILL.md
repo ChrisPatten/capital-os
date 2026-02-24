@@ -1,25 +1,13 @@
 ---
 name: capital-os
 description: Deterministic double-entry ledger core. Record transactions, snapshots, and obligations; compute posture; query balances — all via the local CLI (no HTTP server required).
-metadata: {"openclaw": {"emoji": "📒", "requires": {"bins": ["capital-os"]}, "install": [{"id": "pip", "kind": "download", "label": "pip install -e . (from repo root)"}]}}
+metadata: {"openclaw": {"emoji": "📒", "requires": {"bins": ["capital-os"]}}}
 ---
 
 # Capital OS — Ledger Core
 
 Capital OS is a local-first, deterministic financial truth layer. Use the trusted local CLI (`capital-os`) to call tools directly — no HTTP server, no auth token required. All schema validation, event logging, and ledger invariants are enforced identically to the HTTP adapter.
 
-## Installation
-
-```bash
-# From the repo root:
-pip install -e .
-
-# Or with pipx (isolated environment):
-pipx install .
-
-# Verify:
-capital-os health
-```
 
 ## Invoking tools
 
@@ -49,13 +37,6 @@ capital-os tool schema <tool_name>         # input/output schema for a tool
 capital-os tool call --help                # full flag reference
 ```
 
-## Bootstrap (first run)
-
-```bash
-make init           # apply migrations + seed initial chart of accounts (idempotent)
-capital-os health   # confirm DB is ready
-```
-
 ## Core invariants
 
 - USD only for all postings and snapshots.
@@ -70,7 +51,6 @@ capital-os health   # confirm DB is ready
 ### Step 0 — Ensure chart of accounts exists
 
 ```bash
-make init
 capital-os tool call list_accounts --json '{"correlation_id": "init-check-001"}'
 ```
 
@@ -192,18 +172,6 @@ Key error codes in the payload:
 - `validation_error` — schema mismatch; fix payload and retry.
 - `tool_execution_error` — domain or DB error; treat as no commit unless `status="committed"` was returned.
 - `tool_not_found` — unknown tool name.
-
-## Using the HTTP adapter instead
-
-If the HTTP server is needed (e.g. remote agents, MCP):
-
-```bash
-make serve-idle        # idempotent start; auto-stops after inactivity
-# Then call: POST http://127.0.0.1:8000/tools/<tool_name>
-# Headers: x-capital-auth-token: dev-admin-token
-# Body: {... , "correlation_id": "<unique>"}
-make stop
-```
 
 ## Determinism notes
 

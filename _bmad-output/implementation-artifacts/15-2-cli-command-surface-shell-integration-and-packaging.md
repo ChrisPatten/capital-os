@@ -1,6 +1,6 @@
 # Story 15.2: CLI Command Surface, Shell Integration, and Packaging
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -28,30 +28,30 @@ so that I can invoke tools locally with discoverable commands, good help text, a
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add CLI package and root command (AC: 2, 3, 7)
-  - [ ] Create `src/capital_os/cli/main.py`
-  - [ ] Add nested command groups/modules (`tool`, `server` or `serve`)
-  - [ ] Include command examples in help text/docstrings
-- [ ] Task 2: Add packaging entrypoint (AC: 1)
-  - [ ] Update `pyproject.toml` `[project.scripts]` with `capital-os = capital_os.cli.main:...`
-  - [ ] Verify editable install exposes command in local env
-- [ ] Task 3: Implement CLI command handlers (AC: 3, 4, 5, 6)
-  - [ ] `health` command
-  - [ ] `tool list` command
-  - [ ] `tool schema <tool_name>` command
-  - [ ] `tool call <tool_name>` command with file/stdin JSON ingestion
-  - [ ] `serve` command wrapper
-- [ ] Task 4: Output and exit-code discipline (AC: 5, 6)
-  - [ ] JSON stdout for success
-  - [ ] stderr for errors
-  - [ ] Stable exit code mapping
-- [ ] Task 5: Shell completion support (AC: 8)
-  - [ ] Wire framework completion commands/features
-  - [ ] Validate completion generation for `bash`, `zsh`, and `fish`
-- [ ] Task 6: DB path selection support (AC: 9, 10)
-  - [ ] Add `--db-path` option wiring for local-mode commands
-  - [ ] Ensure shared runtime/session initialization uses provided path
-  - [ ] Add error handling for missing/unopenable database paths
+- [x] Task 1: Add CLI package and root command (AC: 2, 3, 7)
+  - [x] Create `src/capital_os/cli/main.py`
+  - [x] Add nested command groups/modules (`tool`, `server` or `serve`)
+  - [x] Include command examples in help text/docstrings
+- [x] Task 2: Add packaging entrypoint (AC: 1)
+  - [x] Update `pyproject.toml` `[project.scripts]` with `capital-os = capital_os.cli.main:...`
+  - [x] Verify editable install exposes command in local env
+- [x] Task 3: Implement CLI command handlers (AC: 3, 4, 5, 6)
+  - [x] `health` command
+  - [x] `tool list` command
+  - [x] `tool schema <tool_name>` command
+  - [x] `tool call <tool_name>` command with file/stdin JSON ingestion
+  - [x] `serve` command wrapper
+- [x] Task 4: Output and exit-code discipline (AC: 5, 6)
+  - [x] JSON stdout for success
+  - [x] stderr for errors
+  - [x] Stable exit code mapping
+- [x] Task 5: Shell completion support (AC: 8)
+  - [x] Wire framework completion commands/features
+  - [x] Validate completion generation for `bash`, `zsh`, and `fish`
+- [x] Task 6: DB path selection support (AC: 9, 10)
+  - [x] Add `--db-path` option wiring for local-mode commands
+  - [x] Ensure shared runtime/session initialization uses provided path
+  - [x] Add error handling for missing/unopenable database paths
 
 ## Dev Notes
 

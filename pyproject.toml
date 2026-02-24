@@ -13,7 +13,11 @@ dependencies = [
   "pydantic>=2.11.0",
   "python-multipart>=0.0.20",
   "PyYAML>=6.0.2",
+  "typer>=0.15.0",
 ]
+
+[project.scripts]
+capital-os = "capital_os.cli.main:app"
 
 [project.optional-dependencies]
 mcp = [

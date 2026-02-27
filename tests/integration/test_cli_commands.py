@@ -283,6 +283,60 @@ def test_tool_call_read_tool_json_file(db_available: bool, tmp_path: Path) -> No
     assert body["correlation_id"] == "cli-file-001"
 
 
+def test_tool_call_get_account_balances_json_safe_date_output(db_available: bool) -> None:
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    payload = json.dumps(
+        {"as_of_date": "2026-02-01", "correlation_id": "cli-balances-json-safe-001"}
+    )
+    result = _run(
+        ["tool", "call", "get_account_balances", "--json", payload, "--db-path", _db_path()],
+    )
+    assert result.returncode == 0
+    body = json.loads(result.stdout)
+    assert isinstance(body["as_of_date"], str)
+    assert body["correlation_id"] == "cli-balances-json-safe-001"
+
+
+def test_tool_call_list_obligations_json_safe_decimal_output(db_available: bool) -> None:
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.db.session import transaction
+    from capital_os.domain.ledger.repository import create_account
+    from capital_os.domain.ledger.service import create_or_update_obligation
+
+    with transaction() as conn:
+        account_id = create_account(conn, {"code": "cli-obl-9910", "name": "CLI Obligation Account", "account_type": "expense"})
+
+    create_or_update_obligation(
+        {
+            "source_system": "cli-test",
+            "name": "Internet",
+            "account_id": account_id,
+            "cadence": "monthly",
+            "expected_amount": "125.5000",
+            "variability_flag": False,
+            "next_due_date": "2026-03-01",
+            "metadata": {"category": "utilities"},
+            "active": True,
+            "correlation_id": "cli-obligation-seed-001",
+        }
+    )
+
+    payload = json.dumps({"correlation_id": "cli-obligation-list-001"})
+    result = _run(
+        ["tool", "call", "list_obligations", "--json", payload, "--db-path", _db_path()],
+    )
+    assert result.returncode == 0
+    body = json.loads(result.stdout)
+    assert body["correlation_id"] == "cli-obligation-list-001"
+    assert len(body["obligations"]) == 1
+    assert body["obligations"][0]["expected_amount"] == "125.5000"
+    assert body["obligations"][0]["next_due_date"] == "2026-03-01"
+
+
 # ---------------------------------------------------------------------------
 # tool call -- write tool (Task 3, 4 / AC: 5)
 # ---------------------------------------------------------------------------

@@ -252,7 +252,7 @@ def execute_tool(
         result = handler(payload)
         return ToolResult(
             success=True,
-            payload=result.model_dump(),
+            payload=result.model_dump(mode="json"),
             status="ok",
         )
     except ValidationError as exc:

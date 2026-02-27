@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "capital-os"
-version = "0.1.0"
+version = "0.1.1"
 description = "Capital OS Phase 1 ledger core foundation"
 requires-python = ">=3.11"
 dependencies = [

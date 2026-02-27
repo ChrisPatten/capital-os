@@ -228,3 +228,50 @@ Acceptance Criteria:
 - Event log is written on both success and failure paths.
 - `fulfilled_by_transaction_id` is optional; omit to deactivate without linking a transaction.
 Status: done (2026-02-24)
+
+---
+
+## Epic E17: DB Config Env Var Compatibility (2026-02-26)
+
+Priority: P2
+Goal: Improve operator compatibility by supporting `CAPITAL_OS_DB_PATH` interchangeably with `CAPITAL_OS_DB_URL`.
+
+### Story E17-S1: `CAPITAL_OS_DB_PATH` support with precedence + warning
+Why: Different deployment environments provide either URL-style DSNs or direct file paths; the app should accept both without manual translation.
+Deliverables:
+- Add config loading support for `CAPITAL_OS_DB_PATH` alongside `CAPITAL_OS_DB_URL`.
+- Treat `CAPITAL_OS_DB_PATH` and `CAPITAL_OS_DB_URL` as interchangeable inputs for SQLite configuration.
+- If both are set, `CAPITAL_OS_DB_PATH` takes precedence and the tool emits a warning.
+- Accept `CAPITAL_OS_DB_PATH` values in either form:
+- `sqlite:///...` URL form
+- direct filesystem path form
+- Automatically normalize both forms to the canonical SQLite connection configuration used by the app.
+Acceptance Criteria:
+- Setting only `CAPITAL_OS_DB_URL` continues to work with no behavior change.
+- Setting only `CAPITAL_OS_DB_PATH` works for both `sqlite:///...` and direct file path values.
+- When both env vars are set, runtime uses `CAPITAL_OS_DB_PATH` and emits a warning indicating precedence.
+- Normalization behavior is deterministic and covered by tests.
+Status: backlog
+
+---
+
+## Epic E18: Account Deactivation + Cleanup Workflow (2026-02-26)
+
+Priority: P2
+Goal: Provide a safe, auditable way to deactivate accounts created in error and clean up related records with explicit confirmation.
+
+### Story E18-S1: Confirmed account deactivation / cleanup flow
+Why: Operators need a recovery path for mistakenly created accounts without ad hoc DB edits.
+Deliverables:
+- Define an admin-safe tool/workflow to deactivate an account created inadvertently.
+- Include a required confirmation step before executing destructive or high-impact cleanup behavior.
+- Support cleanup handling for related records (transactions, postings, snapshots, obligations, and dependent references) with deterministic rules.
+- Specify and implement how cleanup interacts with append-only/audit constraints (for example: compensating entries / tombstones / archival flags / restricted hard-delete in controlled path).
+- Emit structured event logs for preview, confirmation, success, and failure paths.
+Acceptance Criteria:
+- First call returns a preview/impact summary and a confirmation requirement (no mutation yet).
+- Second confirmed call executes exactly once (idempotent confirmation token or equivalent) and records an audit trail.
+- Related ledger/snapshot/obligation data is handled per the defined cleanup policy with no orphaned references.
+- Behavior is deterministic and covered by integration tests, including cancellation / non-confirmed path.
+- No direct manual DB mutation is required for the operator workflow.
+Status: backlog

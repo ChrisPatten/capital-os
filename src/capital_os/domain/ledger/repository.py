@@ -25,6 +25,85 @@ def fetch_transaction_by_external_id(conn, source_system: str, external_id: str)
     return {"transaction_id": str(row["transaction_id"]), "response_payload": response_payload}
 
 
+def find_duplicate_risk_matches(
+    conn,
+    *,
+    effective_date: Any,
+    postings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Find committed transactions that match on date + account_id + normalized amount."""
+    match_keys = sorted(
+        {
+            (posting["account_id"], str(normalize_amount(posting["amount"])))
+            for posting in postings
+        },
+        key=lambda item: (item[0], item[1]),
+    )
+    if not match_keys:
+        return []
+
+    predicates = " OR ".join("(p.account_id=? AND p.amount=?)" for _ in match_keys)
+    params: list[Any] = [str(effective_date)]
+    for account_id, amount in match_keys:
+        params.extend([account_id, amount])
+
+    rows = conn.execute(
+        f"""
+        SELECT DISTINCT
+          t.transaction_id,
+          t.source_system,
+          t.external_id,
+          t.transaction_date,
+          t.description,
+          t.correlation_id,
+          t.entity_id
+        FROM ledger_transactions t
+        JOIN ledger_postings p ON p.transaction_id = t.transaction_id
+        WHERE date(t.transaction_date) = date(?)
+          AND ({predicates})
+        ORDER BY t.transaction_date ASC, t.transaction_id ASC
+        """,
+        tuple(params),
+    ).fetchall()
+
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        posting_rows = conn.execute(
+            """
+            SELECT posting_id, account_id, amount, currency, memo
+            FROM ledger_postings
+            WHERE transaction_id=?
+            ORDER BY account_id ASC, amount ASC, posting_id ASC
+            """,
+            (row["transaction_id"],),
+        ).fetchall()
+        postings_payload = [
+            {
+                "posting_id": posting["posting_id"],
+                "account_id": posting["account_id"],
+                "amount": str(normalize_amount(posting["amount"])),
+                "currency": posting["currency"],
+                "memo": posting["memo"],
+            }
+            for posting in posting_rows
+        ]
+
+        result.append(
+            {
+                "match_reason": "same_account_date_amount",
+                "transaction_id": row["transaction_id"],
+                "source_system": row["source_system"],
+                "external_id": row["external_id"],
+                "date": row["transaction_date"],
+                "description": row["description"],
+                "correlation_id": row["correlation_id"],
+                "entity_id": row["entity_id"],
+                "postings": postings_payload,
+            }
+        )
+    return result
+
+
 def insert_transaction_bundle(conn, payload: dict[str, Any]) -> tuple[str, list[str]]:
     postings = sorted(payload["postings"], key=lambda p: (p["account_id"], str(p["amount"]), p.get("memo") or ""))
     tx_id = str(uuid4())

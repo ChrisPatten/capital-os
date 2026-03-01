@@ -61,18 +61,18 @@ def test_reconcile_account_returns_deterministic_delta_and_proposed_adjustment(d
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["ledger_balance"] == 100.0
-    assert body["snapshot_balance"] == 95.0
-    assert body["delta"] == -5.0
+    assert body["ledger_balance"] == "100.0000"
+    assert body["snapshot_balance"] == "95.0000"
+    assert body["delta"] == "-5.0000"
     assert body["source_used"] == "snapshot"
     assert body["suggested_adjustment_bundle"]["status"] == "proposed"
     assert body["suggested_adjustment_bundle"]["auto_commit"] is False
     postings = body["suggested_adjustment_bundle"]["postings"]
     assert len(postings) == 2
     assert postings[0]["account_id"] == ids["cash"]
-    assert postings[0]["amount"] == -5.0
+    assert postings[0]["amount"] == "-5.0000"
     assert postings[1]["account_id"] == "__OFFSET_ACCOUNT_REQUIRED__"
-    assert postings[1]["amount"] == 5.0
+    assert postings[1]["amount"] == "5.0000"
 
     with transaction() as conn:
         after_tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]

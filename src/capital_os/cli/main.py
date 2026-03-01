@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 import typer
+from typer import completion
 
 from capital_os.cli.context import configure_db_path, ensure_db_ready
 from capital_os.cli.server import server_app
@@ -33,10 +34,36 @@ app = typer.Typer(
     help="Capital OS - deterministic financial truth layer CLI.",
     no_args_is_help=True,
     pretty_exceptions_enable=False,
+    add_completion=False,
 )
 
 app.add_typer(tool_app, name="tool")
 app.add_typer(server_app, name="serve")
+
+
+@app.callback()
+def root_options(
+    show_completion: Annotated[
+        str | None,
+        typer.Option(
+            "--show-completion",
+            help="Show completion script for a shell (bash, zsh, fish).",
+            callback=completion.show_callback,
+            is_eager=True,
+        ),
+    ] = None,
+    install_completion: Annotated[
+        str | None,
+        typer.Option(
+            "--install-completion",
+            help="Install completion for a shell (bash, zsh, fish).",
+            callback=completion.install_callback,
+            is_eager=True,
+        ),
+    ] = None,
+) -> None:
+    # Completion callbacks exit early when invoked.
+    _ = show_completion, install_completion
 
 
 @app.command()
@@ -66,3 +93,7 @@ def health(
 
     result = {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
     sys.stdout.write(json.dumps(result, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    app()

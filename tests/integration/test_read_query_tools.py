@@ -140,7 +140,7 @@ def test_get_account_balances_source_policy_deterministic(db_available):
     )
     assert ledger_only.status_code == 200
     ledger_row = [row for row in ledger_only.json()["balances"] if row["account_id"] == ids["cash"]][0]
-    assert ledger_row["balance"] == 100.0
+    assert ledger_row["balance"] == "100.0000"
     assert ledger_row["source_used"] == "ledger"
 
     snapshot_only = client.post(
@@ -153,7 +153,7 @@ def test_get_account_balances_source_policy_deterministic(db_available):
     )
     assert snapshot_only.status_code == 200
     snapshot_row = [row for row in snapshot_only.json()["balances"] if row["account_id"] == ids["cash"]][0]
-    assert snapshot_row["balance"] == 95.0
+    assert snapshot_row["balance"] == "95.0000"
     assert snapshot_row["source_used"] == "snapshot"
 
     best_available = client.post(
@@ -166,7 +166,7 @@ def test_get_account_balances_source_policy_deterministic(db_available):
     )
     assert best_available.status_code == 200
     best_row = [row for row in best_available.json()["balances"] if row["account_id"] == ids["cash"]][0]
-    assert best_row["balance"] == 95.0
+    assert best_row["balance"] == "95.0000"
     assert best_row["source_used"] == "snapshot"
 
 
@@ -213,7 +213,7 @@ def test_get_account_balances_uses_configured_default_policy(db_available, monke
     body = response.json()
     assert body["source_policy"] == "ledger_only"
     cash_row = [row for row in body["balances"] if row["account_id"] == ids["cash"]][0]
-    assert cash_row["balance"] == 100.0
+    assert cash_row["balance"] == "100.0000"
     assert cash_row["source_used"] == "ledger"
     get_settings.cache_clear()
 

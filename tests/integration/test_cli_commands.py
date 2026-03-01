@@ -18,8 +18,10 @@ Covering:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
+import sys
 from pathlib import Path
 from typing import Sequence
 
@@ -31,8 +33,10 @@ from capital_os.config import get_settings
 # Helpers
 # ---------------------------------------------------------------------------
 
-_CLI_CMD = "capital-os"
+_CLI_CMD = [sys.executable, "-m", "capital_os.cli.main"]
 _TIMEOUT = 10  # seconds — protects against hung subprocesses
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC_PATH = _REPO_ROOT / "src"
 
 WRITE_TOOL = "create_account"
 READ_TOOL = "list_accounts"
@@ -45,12 +49,21 @@ def _run(
     timeout: int = _TIMEOUT,
 ) -> subprocess.CompletedProcess:
     """Run a capital-os CLI command and return the CompletedProcess."""
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    pythonpath_parts = [str(_SRC_PATH)]
+    if existing_pythonpath:
+        pythonpath_parts.append(existing_pythonpath)
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+
     return subprocess.run(
-        [_CLI_CMD, *args],
+        [*_CLI_CMD, *args],
         capture_output=True,
         text=True,
         input=input,
         timeout=timeout,
+        cwd=str(_REPO_ROOT),
+        env=env,
     )
 
 

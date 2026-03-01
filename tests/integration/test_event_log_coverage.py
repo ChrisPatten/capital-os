@@ -278,6 +278,74 @@ def test_approval_tools_success_and_validation_failures_logged(db_available, mon
     get_settings.cache_clear()
 
 
+def test_duplicate_risk_proposal_logs_output_hash_from_response(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+
+    client = TestClient(app, headers=AUTH_HEADERS)
+    with transaction() as conn:
+        debit = create_account(conn, {"code": "1710", "name": "Dup Cash", "account_type": "asset"})
+        credit = create_account(conn, {"code": "2710", "name": "Dup Liability", "account_type": "liability"})
+
+    seed = client.post(
+        "/tools/record_transaction_bundle",
+        json={
+            "source_system": "pytest",
+            "external_id": "evt-dup-seed-1",
+            "date": "2026-01-01T00:00:00Z",
+            "description": "dup seed",
+            "postings": [
+                {"account_id": debit, "amount": "250.0000", "currency": "USD"},
+                {"account_id": credit, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-seed-evt",
+        },
+    )
+    assert seed.status_code == 200
+    assert seed.json()["status"] == "committed"
+
+    proposed = client.post(
+        "/tools/record_transaction_bundle",
+        json={
+            "source_system": "pytest",
+            "external_id": "evt-dup-candidate-1",
+            "date": "2026-01-01T08:00:00Z",
+            "description": "dup candidate",
+            "postings": [
+                {"account_id": debit, "amount": "250.00004", "currency": "USD"},
+                {"account_id": credit, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-candidate-evt",
+        },
+    )
+    assert proposed.status_code == 200
+    body = proposed.json()
+    assert body["status"] == "proposed"
+    assert body["match_reason"] == "same_account_date_amount"
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT input_hash, output_hash, status
+            FROM event_log
+            WHERE tool_name='record_transaction_bundle' AND correlation_id='corr-dup-candidate-evt'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    assert row is not None
+    assert row["status"] == "ok"
+    assert row["input_hash"]
+    assert row["output_hash"] == body["output_hash"]
+    get_settings.cache_clear()
+
+
 def test_read_query_tools_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")

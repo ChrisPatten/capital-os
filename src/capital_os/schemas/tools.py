@@ -51,6 +51,8 @@ class RecordTransactionBundleIn(BaseModel):
 
 
 class RecordTransactionBundleOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: Literal["committed", "idempotent-replay", "proposed", "rejected"]
     transaction_id: str | None = None
     posting_ids: list[str] = Field(default_factory=list)
@@ -60,6 +62,9 @@ class RecordTransactionBundleOut(BaseModel):
     matched_rule_id: str | None = None
     required_approvals: int | None = None
     approvals_received: int | None = None
+    proposed_transaction: dict | None = None
+    matched_transactions: list[dict] = Field(default_factory=list)
+    match_reason: Literal["same_account_date_amount"] | None = None
     correlation_id: str
     output_hash: str
 

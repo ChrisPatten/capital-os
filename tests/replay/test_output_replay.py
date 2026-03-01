@@ -290,3 +290,49 @@ def test_period_tools_output_hash_reproducible_on_replay(db_available):
     assert first_lock["status"] == "locked"
     assert second_lock["status"] == "already_locked"
     assert first_lock["state"] == second_lock["state"] == "locked"
+
+
+def test_duplicate_risk_proposal_output_hash_reproducible_on_replay(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+
+    with transaction() as conn:
+        debit = create_account(conn, {"code": "1000", "name": "Replay Dup Debit", "account_type": "asset"})
+        credit = create_account(conn, {"code": "2000", "name": "Replay Dup Credit", "account_type": "liability"})
+
+    record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-replay-seed",
+            "date": "2026-04-01T00:00:00Z",
+            "description": "seed duplicate replay",
+            "postings": [
+                {"account_id": debit, "amount": "75.0000", "currency": "USD"},
+                {"account_id": credit, "amount": "-75.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-replay-seed",
+        }
+    )
+
+    payload = {
+        "source_system": "pytest",
+        "external_id": "dup-replay-candidate",
+        "date": "2026-04-01T10:30:00Z",
+        "description": "duplicate replay candidate",
+        "postings": [
+            {"account_id": debit, "amount": "75.00004", "currency": "USD"},
+            {"account_id": credit, "amount": "-75.0000", "currency": "USD"},
+        ],
+        "correlation_id": "corr-dup-replay-candidate-1",
+    }
+    first = record_transaction_bundle(payload)
+    second = record_transaction_bundle({**payload, "correlation_id": "corr-dup-replay-candidate-2"})
+
+    assert first["status"] == "proposed"
+    assert second["status"] == "proposed"
+    assert first["output_hash"] == second["output_hash"]
+    assert first["proposed_transaction"] == second["proposed_transaction"]
+    assert first["matched_transactions"] == second["matched_transactions"]

@@ -7,8 +7,9 @@ import pytest
 from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.domain.approval.service import approve_proposed_transaction, reject_proposed_transaction
-from capital_os.domain.ledger.repository import create_account
+from capital_os.domain.ledger.repository import create_account, insert_transaction_bundle
 from capital_os.domain.ledger.service import record_transaction_bundle
+from capital_os.observability.hashing import payload_hash
 
 
 @pytest.fixture(autouse=True)
@@ -210,3 +211,143 @@ def test_approval_write_rolls_back_when_event_log_fails(db_available, monkeypatc
 
     assert tx_count == 0
     assert proposal_status == "proposed"
+
+
+def test_duplicate_risk_routes_to_proposal_without_mutation_below_threshold(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "1000.0000")
+    debit_account, credit_account = _seed_accounts()
+
+    committed = record_transaction_bundle(
+        _proposal_payload(debit_account, credit_account, external_id="dup-risk-seed-1")
+    )
+    assert committed["status"] == "committed"
+
+    duplicate_candidate = record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-risk-candidate-1",
+            "date": "2026-01-01T12:00:00Z",
+            "description": "duplicate-risk transfer",
+            "postings": [
+                {"account_id": debit_account, "amount": "250.00004", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-risk-1",
+        }
+    )
+
+    assert duplicate_candidate["status"] == "proposed"
+
+    with transaction() as conn:
+        tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+        proposal_count = conn.execute("SELECT COUNT(*) AS c FROM approval_proposals").fetchone()["c"]
+        proposal = conn.execute(
+            """
+            SELECT response_payload
+            FROM approval_proposals
+            WHERE source_system='pytest' AND external_id='dup-risk-candidate-1'
+            """,
+        ).fetchone()
+
+    assert tx_count == 1
+    assert proposal_count == 1
+    assert proposal is not None
+
+
+def test_duplicate_risk_proposal_payload_contains_both_sides_in_deterministic_order(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "1000.0000")
+    debit_account, credit_account = _seed_accounts()
+    with transaction() as conn:
+        reserve_account = create_account(conn, {"code": "1300", "name": "Reserve Cash", "account_type": "asset"})
+
+        tx_payload_1 = {
+            "source_system": "historical",
+            "external_id": "hist-1",
+            "date": "2026-01-01T08:00:00Z",
+            "description": "historical 1",
+            "postings": [
+                {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-hist-1",
+            "input_hash": "hist-input-1",
+        }
+        tx_payload_2 = {
+            "source_system": "historical",
+            "external_id": "hist-2",
+            "date": "2026-01-01T09:00:00Z",
+            "description": "historical 2",
+            "postings": [
+                {"account_id": reserve_account, "amount": "250.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-hist-2",
+            "input_hash": "hist-input-2",
+        }
+        tx_payload_1["input_hash"] = payload_hash(tx_payload_1)
+        tx_payload_2["input_hash"] = payload_hash(tx_payload_2)
+        insert_transaction_bundle(conn, tx_payload_1)
+        insert_transaction_bundle(conn, tx_payload_2)
+
+    result = record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-risk-candidate-2",
+            "date": "2026-01-01T12:00:00Z",
+            "description": "duplicate-risk transfer detailed",
+            "postings": [
+                {"account_id": reserve_account, "amount": "250.0000", "currency": "USD"},
+                {"account_id": debit_account, "amount": "250.00004", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-500.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-risk-2",
+        }
+    )
+
+    assert result["status"] == "proposed"
+    assert result["match_reason"] == "same_account_date_amount"
+    assert result["proposed_transaction"]["external_id"] == "dup-risk-candidate-2"
+    proposed_accounts = [posting["account_id"] for posting in result["proposed_transaction"]["postings"]]
+    assert proposed_accounts == sorted(proposed_accounts)
+    normalized_debit = next(
+        posting for posting in result["proposed_transaction"]["postings"] if posting["account_id"] == debit_account
+    )
+    assert normalized_debit["amount"] == "250.0000"
+    assert [row["external_id"] for row in result["matched_transactions"]] == ["hist-1", "hist-2"]
+
+
+def test_duplicate_risk_proposal_replays_canonical_response_for_same_external_id(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "1000.0000")
+    debit_account, credit_account = _seed_accounts()
+    record_transaction_bundle(
+        _proposal_payload(debit_account, credit_account, external_id="dup-risk-seed-replay")
+    )
+
+    payload = {
+        "source_system": "pytest",
+        "external_id": "dup-risk-replay-1",
+        "date": "2026-01-01T12:00:00Z",
+        "description": "duplicate-risk replay",
+        "postings": [
+            {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
+            {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+        ],
+        "correlation_id": "corr-dup-risk-replay-1",
+    }
+    first = record_transaction_bundle(payload)
+    second = record_transaction_bundle({**payload, "correlation_id": "corr-dup-risk-replay-2"})
+
+    assert first["status"] == "proposed"
+    assert second["status"] == "proposed"
+    assert first["proposal_id"] == second["proposal_id"]
+    assert first["output_hash"] == second["output_hash"]
+    assert first["matched_transactions"] == second["matched_transactions"]

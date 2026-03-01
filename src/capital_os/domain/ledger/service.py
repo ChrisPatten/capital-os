@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from time import perf_counter
 import sqlite3
+from datetime import datetime, timezone
 
 from capital_os.domain.approval.policy import transaction_impact_amount
 from capital_os.domain.approval.repository import (
@@ -16,6 +17,7 @@ from capital_os.db.session import transaction
 from capital_os.domain.ledger.idempotency import resolve_transaction_idempotency
 from capital_os.domain.ledger.invariants import InvariantError, ensure_balanced, normalize_amount
 from capital_os.domain.ledger.repository import (
+    find_duplicate_risk_matches,
     insert_transaction_bundle,
     save_transaction_response,
     upsert_balance_snapshot,
@@ -26,7 +28,51 @@ from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 
 
-def _proposal_response_payload(proposal: dict) -> dict:
+def _as_utc_iso(value: object) -> str:
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _proposal_transaction_payload(payload: dict) -> dict:
+    postings = sorted(
+        payload["postings"],
+        key=lambda posting: (
+            posting["account_id"],
+            str(normalize_amount(posting["amount"])),
+            posting.get("memo") or "",
+        ),
+    )
+    normalized_postings = [
+        {
+            "account_id": posting["account_id"],
+            "amount": str(normalize_amount(posting["amount"])),
+            "currency": posting["currency"],
+            "memo": posting.get("memo"),
+        }
+        for posting in postings
+    ]
+    return {
+        "source_system": payload["source_system"],
+        "external_id": payload["external_id"],
+        "date": _as_utc_iso(payload["date"]),
+        "description": payload["description"],
+        "entity_id": payload.get("entity_id", DEFAULT_ENTITY_ID),
+        "postings": normalized_postings,
+    }
+
+
+def _proposal_response_payload(
+    proposal: dict,
+    *,
+    duplicate_context: dict | None = None,
+) -> dict:
     response = dict(proposal.get("response_payload") or {})
     if response:
         return response
@@ -41,6 +87,8 @@ def _proposal_response_payload(proposal: dict) -> dict:
         "required_approvals": int(proposal.get("required_approvals") or 1),
         "approvals_received": 0,
     }
+    if duplicate_context is not None:
+        response.update(duplicate_context)
     response["output_hash"] = payload_hash(response)
     return response
 
@@ -81,8 +129,14 @@ def record_transaction_bundle(payload: dict) -> dict:
                 tool_name="record_transaction_bundle",
                 force_approval=force_approval,
             )
+            duplicate_matches = find_duplicate_risk_matches(
+                conn,
+                effective_date=tx_payload["date"],
+                postings=tx_payload["postings"],
+            )
+            duplicate_approval_required = bool(duplicate_matches)
 
-            if policy_decision.approval_required:
+            if policy_decision.approval_required or duplicate_approval_required:
                 proposal = fetch_proposal_by_source_external(
                     conn,
                     tool_name="record_transaction_bundle",
@@ -113,7 +167,15 @@ def record_transaction_bundle(payload: dict) -> dict:
                     if not proposal:
                         raise InvariantError(f"proposal {proposal_id} was not persisted")
 
-                response = _proposal_response_payload(proposal)
+                duplicate_context = None
+                if duplicate_approval_required:
+                    duplicate_context = {
+                        "match_reason": "same_account_date_amount",
+                        "proposed_transaction": _proposal_transaction_payload(tx_payload),
+                        "matched_transactions": duplicate_matches,
+                    }
+
+                response = _proposal_response_payload(proposal, duplicate_context=duplicate_context)
                 if not proposal.get("response_payload"):
                     persist_proposal_result(
                         conn,

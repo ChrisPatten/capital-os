@@ -136,3 +136,9 @@ development_status:
   16-1-obligation-deactivation-and-active-flag: done
   16-2-fulfill-obligation-tool: done
   epic-16-retrospective: optional
+
+  epic-17: in-progress
+  17-1-duplicate-risk-detection-rule-in-write-path: review
+  17-2-proposal-contract-and-approval-decision-expansion: ready-for-dev
+  17-3-authorization-audit-and-determinism-coverage: ready-for-dev
+  epic-17-retrospective: optional

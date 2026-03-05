@@ -142,3 +142,9 @@ development_status:
   17-2-proposal-contract-and-approval-decision-expansion: done
   17-3-authorization-audit-and-determinism-coverage: done
   epic-17-retrospective: optional
+
+  epic-18: in-progress
+  18-1-update-account-profile-tool: ready-for-dev
+  18-2-account-identifier-history-and-suffix-changes: ready-for-dev
+  18-3-update-account-profile-security-determinism-and-docs: ready-for-dev
+  epic-18-retrospective: optional

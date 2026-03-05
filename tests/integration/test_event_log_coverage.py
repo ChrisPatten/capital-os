@@ -346,6 +346,238 @@ def test_duplicate_risk_proposal_logs_output_hash_from_response(db_available, mo
     get_settings.cache_clear()
 
 
+def test_duplicate_risk_validation_failure_is_logged(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    client = TestClient(app, headers=AUTH_HEADERS)
+    response = client.post(
+        "/tools/record_transaction_bundle",
+        json={
+            "source_system": "pytest",
+            "external_id": "evt-dup-invalid-1",
+            "date": "2026-01-01T09:00:00Z",
+            "description": "dup invalid payload",
+            "correlation_id": "corr-dup-invalid-evt",
+        },
+    )
+    assert response.status_code == 422
+
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT status, input_hash, output_hash, event_timestamp, duration_ms
+            FROM event_log
+            WHERE tool_name='record_transaction_bundle' AND correlation_id='corr-dup-invalid-evt'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    assert row is not None
+    assert row["status"] == "validation_error"
+    assert row["input_hash"]
+    assert row["output_hash"]
+    assert row["event_timestamp"]
+    assert row["duration_ms"] >= 0
+
+
+def test_duplicate_risk_approval_and_reject_paths_are_logged(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app, headers=AUTH_HEADERS)
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "1720", "name": "Dup Event Debit", "account_type": "asset"})
+            credit = create_account(
+                conn, {"code": "2720", "name": "Dup Event Credit", "account_type": "liability"}
+            )
+
+        seed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-dup-decision-seed",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "dup decision seed",
+                "postings": [
+                    {"account_id": debit, "amount": "95.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-95.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-dup-decision-seed",
+            },
+        )
+        assert seed.status_code == 200
+
+        approve_proposal = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-dup-decision-approve",
+                "date": "2026-01-01T10:00:00Z",
+                "description": "dup approve proposal",
+                "postings": [
+                    {"account_id": debit, "amount": "95.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-95.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-dup-decision-propose-approve",
+            },
+        )
+        reject_proposal = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-dup-decision-reject",
+                "date": "2026-01-01T11:00:00Z",
+                "description": "dup reject proposal",
+                "postings": [
+                    {"account_id": debit, "amount": "95.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-95.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-dup-decision-propose-reject",
+            },
+        )
+        assert approve_proposal.status_code == 200
+        assert reject_proposal.status_code == 200
+
+        approved = client.post(
+            "/tools/approve_proposed_transaction",
+            json={
+                "proposal_id": approve_proposal.json()["proposal_id"],
+                "reason": "approve duplicate-risk proposal",
+                "correlation_id": "corr-dup-decision-approve",
+            },
+        )
+        rejected = client.post(
+            "/tools/reject_proposed_transaction",
+            json={
+                "proposal_id": reject_proposal.json()["proposal_id"],
+                "reason": "reject duplicate-risk proposal",
+                "correlation_id": "corr-dup-decision-reject",
+            },
+        )
+        assert approved.status_code == 200
+        assert rejected.status_code == 200
+
+        with transaction() as conn:
+            approve_log = conn.execute(
+                """
+                SELECT status, input_hash, output_hash, event_timestamp, duration_ms
+                FROM event_log
+                WHERE tool_name='approve_proposed_transaction' AND correlation_id='corr-dup-decision-approve'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            reject_log = conn.execute(
+                """
+                SELECT status, input_hash, output_hash, event_timestamp, duration_ms
+                FROM event_log
+                WHERE tool_name='reject_proposed_transaction' AND correlation_id='corr-dup-decision-reject'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+        assert approve_log is not None
+        assert approve_log["status"] == "ok"
+        assert approve_log["input_hash"]
+        assert approve_log["output_hash"] == approved.json()["output_hash"]
+        assert approve_log["event_timestamp"]
+        assert approve_log["duration_ms"] >= 0
+        assert reject_log is not None
+        assert reject_log["status"] == "ok"
+        assert reject_log["input_hash"]
+        assert reject_log["output_hash"] == rejected.json()["output_hash"]
+        assert reject_log["event_timestamp"]
+        assert reject_log["duration_ms"] >= 0
+    finally:
+        get_settings.cache_clear()
+
+
+def test_duplicate_risk_proposal_rolls_back_when_event_log_insert_fails(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app, headers=AUTH_HEADERS)
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "1730", "name": "Dup Fail Debit", "account_type": "asset"})
+            credit = create_account(conn, {"code": "2730", "name": "Dup Fail Credit", "account_type": "liability"})
+
+        seed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-dup-fail-seed",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "dup fail seed",
+                "postings": [
+                    {"account_id": debit, "amount": "45.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-45.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-dup-fail-seed",
+            },
+        )
+        assert seed.status_code == 200
+        assert seed.json()["status"] == "committed"
+
+        with transaction() as conn:
+            conn.execute(
+                """
+                CREATE TRIGGER fail_duplicate_risk_event_log
+                BEFORE INSERT ON event_log
+                FOR EACH ROW
+                WHEN NEW.tool_name='record_transaction_bundle'
+                  AND NEW.correlation_id='corr-dup-fail-candidate'
+                BEGIN
+                  SELECT RAISE(ABORT, 'forced duplicate-risk event log failure');
+                END;
+                """
+            )
+
+        failed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "evt-dup-fail-candidate",
+                "date": "2026-01-01T13:00:00Z",
+                "description": "dup fail candidate",
+                "postings": [
+                    {"account_id": debit, "amount": "45.00004", "currency": "USD"},
+                    {"account_id": credit, "amount": "-45.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-dup-fail-candidate",
+            },
+        )
+        assert failed.status_code >= 500
+
+        with transaction() as conn:
+            conn.execute("DROP TRIGGER IF EXISTS fail_duplicate_risk_event_log")
+            tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+            proposal_count = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM approval_proposals
+                WHERE source_system='pytest' AND external_id='evt-dup-fail-candidate'
+                """
+            ).fetchone()["c"]
+
+        assert tx_count == 1
+        assert proposal_count == 0
+    finally:
+        get_settings.cache_clear()
+
+
 def test_read_query_tools_success_and_validation_failures_logged(db_available):
     if not db_available:
         pytest.skip("database unavailable")

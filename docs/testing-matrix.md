@@ -1,12 +1,12 @@
 # Testing Matrix
 
-As of 2026-02-16.
+As of 2026-03-05.
 
 ## Deterministic Guarantees by Tool
 
 | Tool | Determinism Guarantee | Coverage |
 | --- | --- | --- |
-| `record_transaction_bundle` | Duplicate `(source_system, external_id)` yields canonical replay hash | `tests/integration/test_idempotency_external_id.py`, `tests/replay/test_output_replay.py` |
+| `record_transaction_bundle` | Duplicate `(source_system, external_id)` yields canonical replay hash; duplicate-risk proposals return deterministic side-by-side payloads under serial and concurrent replay | `tests/integration/test_idempotency_external_id.py`, `tests/integration/test_approval_workflow.py`, `tests/replay/test_output_replay.py` |
 | `compute_capital_posture` | Same input yields identical response payload and `output_hash` | `tests/unit/test_posture_engine.py`, `tests/replay/test_output_replay.py` |
 | `compute_consolidated_posture` | Same multi-entity input/state yields stable per-entity ordering and deterministic consolidated `output_hash` | `tests/integration/test_consolidated_posture_tool.py`, `tests/replay/test_output_replay.py`, `tests/replay/test_multi_entity_replay.py` |
 | `simulate_spend` | Same input yields identical period projections and `output_hash` | `tests/unit/test_simulation_engine.py`, `tests/integration/test_simulation_non_mutation.py`, `tests/replay/test_output_replay.py` |
@@ -40,6 +40,7 @@ Detailed SC/FR/NFR mapping lives in `docs/traceability-matrix.md`.
 | Authn baseline | Every `POST /tools/{tool_name}` call requires `x-capital-auth-token` and returns deterministic `401` on absence/invalid token | `tests/security/test_api_security_controls.py` |
 | Tool-level authz | Capability map enforcement yields deterministic `403` for denied tools and allow-path coverage for read tools | `tests/security/test_api_security_controls.py` |
 | Correlation requirement | `correlation_id` required and validated before handler dispatch for all tools | `tests/security/test_api_security_controls.py`, `tests/integration/test_tool_contract_validation.py` |
+| Duplicate-risk write boundary | Reader capability cannot invoke duplicate-risk write/proposal/approval paths; read-only DB consumers cannot write approval tables | `tests/security/test_api_security_controls.py`, `tests/security/test_db_role_boundaries.py` |
 
 ## CI Gates
 
@@ -47,5 +48,5 @@ Detailed SC/FR/NFR mapping lives in `docs/traceability-matrix.md`.
 - Migration apply/rollback/re-apply gate: `.github/workflows/ci.yml` job `migration-reversibility`.
 - Replay/hash determinism regression gate: `.github/workflows/ci.yml` job `determinism-regression`.
 - Security auth surface gate: `.github/workflows/ci.yml` job `security-auth-surface`.
-- Performance regression gate includes policy-evaluation overhead p95 `<50ms`: `tests/perf/test_tool_latency.py`.
+- Performance regression gate includes `record_transaction_bundle` commit/proposal path p95 `<300ms` and policy-evaluation overhead p95 `<50ms`: `tests/perf/test_tool_latency.py`.
 - Epic 8 multi-entity replay/perf gates: `.github/workflows/ci.yml` job `epic8-multi-entity-gates`.

@@ -273,7 +273,8 @@ def test_duplicate_risk_proposal_payload_contains_both_sides_in_deterministic_or
             "description": "historical 1",
             "postings": [
                 {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
-                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+                {"account_id": reserve_account, "amount": "250.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-500.0000", "currency": "USD"},
             ],
             "correlation_id": "corr-hist-1",
             "input_hash": "hist-input-1",
@@ -284,8 +285,9 @@ def test_duplicate_risk_proposal_payload_contains_both_sides_in_deterministic_or
             "date": "2026-01-01T09:00:00Z",
             "description": "historical 2",
             "postings": [
+                {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
                 {"account_id": reserve_account, "amount": "250.0000", "currency": "USD"},
-                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-500.0000", "currency": "USD"},
             ],
             "correlation_id": "corr-hist-2",
             "input_hash": "hist-input-2",
@@ -351,3 +353,119 @@ def test_duplicate_risk_proposal_replays_canonical_response_for_same_external_id
     assert first["proposal_id"] == second["proposal_id"]
     assert first["output_hash"] == second["output_hash"]
     assert first["matched_transactions"] == second["matched_transactions"]
+
+
+def test_duplicate_risk_proposals_are_deterministic_under_concurrency(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "1000.0000")
+    debit_account, credit_account = _seed_accounts()
+    record_transaction_bundle(
+        _proposal_payload(debit_account, credit_account, external_id="dup-risk-concurrency-seed")
+    )
+
+    def _submit(correlation_suffix: int) -> dict:
+        return record_transaction_bundle(
+            {
+                "source_system": "pytest",
+                "external_id": "dup-risk-concurrency-candidate",
+                "date": "2026-01-01T12:00:00Z",
+                "description": "duplicate-risk concurrency replay",
+                "postings": [
+                    {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
+                    {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+                ],
+                "correlation_id": f"corr-dup-risk-concurrency-{correlation_suffix}",
+            }
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(_submit, [1, 2, 3, 4]))
+
+    proposal_ids = {row["proposal_id"] for row in results}
+    output_hashes = {row["output_hash"] for row in results}
+    matched_payloads = {
+        payload_hash(
+            {
+                "match_reason": row["match_reason"],
+                "proposed_transaction": row["proposed_transaction"],
+                "matched_transactions": row["matched_transactions"],
+            }
+        )
+        for row in results
+    }
+
+    assert len(proposal_ids) == 1
+    assert len(output_hashes) == 1
+    assert len(matched_payloads) == 1
+    assert all(row["status"] == "proposed" for row in results)
+
+    with transaction() as conn:
+        tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+        proposal_count = conn.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM approval_proposals
+            WHERE source_system='pytest' AND external_id='dup-risk-concurrency-candidate'
+            """
+        ).fetchone()["c"]
+
+    assert tx_count == 1
+    assert proposal_count == 1
+
+
+def test_serial_writes_commit_non_matches_and_propose_duplicates(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "1000.0000")
+    debit_account, credit_account = _seed_accounts()
+
+    first = record_transaction_bundle(
+        _proposal_payload(debit_account, credit_account, external_id="dup-serial-seed")
+    )
+    assert first["status"] == "committed"
+
+    duplicate = record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-serial-proposed",
+            "date": "2026-01-01T08:30:00Z",
+            "description": "duplicate serial path",
+            "postings": [
+                {"account_id": debit_account, "amount": "250.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-250.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-serial-proposed",
+        }
+    )
+    assert duplicate["status"] == "proposed"
+
+    non_match = record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-serial-committed",
+            "date": "2026-01-01T08:30:00Z",
+            "description": "non-duplicate serial path",
+            "postings": [
+                {"account_id": debit_account, "amount": "255.0000", "currency": "USD"},
+                {"account_id": credit_account, "amount": "-255.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-serial-committed",
+        }
+    )
+    assert non_match["status"] == "committed"
+
+    with transaction() as conn:
+        tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+        proposal_count = conn.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM approval_proposals
+            WHERE source_system='pytest' AND external_id='dup-serial-proposed'
+            """
+        ).fetchone()["c"]
+
+    assert tx_count == 2
+    assert proposal_count == 1

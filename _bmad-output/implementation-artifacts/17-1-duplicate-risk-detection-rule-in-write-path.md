@@ -1,6 +1,6 @@
 # Story 17.1: Duplicate-Risk Detection Rule in Write Path
 
-Status: review
+Status: done
 
 ## Story
 
@@ -98,6 +98,11 @@ so that accidental duplicate entries are routed through the existing proposal/ap
 - Added integration, replay, and event-log tests covering duplicate-risk proposal routing, payload content, no-mutation semantics, replay determinism, and event hash integrity.
 - Ran targeted suites for modified areas (all passed).
 - Ran full regression suite; all tests passed.
+- Senior code review fix: tightened duplicate-risk matching so candidates must contain all normalized `(account_id, amount)` keys from the proposed payload.
+- Senior code review fix: removed duplicate-risk N+1 posting fetch path by batching posting hydration for matched transactions.
+- Senior code review fix: added explicit serial subset integration coverage (non-matching writes commit while duplicate-risk writes are proposed).
+- Senior code review fix: added unit coverage for partial-overlap non-match behavior under all-key matching semantics.
+- Re-ran duplicate-risk targeted tests after fixes (`11 passed`).
 
 ### Completion Notes
 
@@ -105,6 +110,8 @@ so that accidental duplicate entries are routed through the existing proposal/ap
 - ✅ AC3/AC5/AC6: matching writes now return `status="proposed"` without new ledger rows; non-matching and policy flows remain active; replay by `(source_system, external_id)` remains canonical.
 - ✅ AC4: proposal response now includes both proposed transaction details and all matched transaction candidates plus `match_reason`.
 - ✅ AC8: duplicate-risk proposal responses are persisted with deterministic `output_hash`; event log entries capture matching output hash.
+- ✅ Review remediation: duplicate-risk candidates now require full key-set match (not single-key overlap), reducing false positives while preserving deterministic ordering.
+- ✅ Review remediation: serial subset behavior is explicitly covered by integration tests.
 
 ### File List
 
@@ -115,14 +122,22 @@ so that accidental duplicate entries are routed through the existing proposal/ap
 - tests/integration/test_approval_workflow.py
 - tests/integration/test_event_log_coverage.py
 - tests/replay/test_output_replay.py
-- src/capital_os/cli/main.py
-- tests/integration/test_cli_commands.py
-- tests/integration/test_read_query_tools.py
-- tests/integration/test_reconcile_account_tool.py
-- _bmad-output/implementation-artifacts/sprint-status.yaml
 - _bmad-output/implementation-artifacts/17-1-duplicate-risk-detection-rule-in-write-path.md
 
 ### Change Log
 
 - 2026-03-01: Implemented duplicate-risk approval gate for `record_transaction_bundle`, expanded deterministic proposal payload contract, and added integration/replay/event-log coverage for duplicate-risk behavior.
 - 2026-03-01: Fixed CLI completion invocation path in integration harness and aligned read/reconcile numeric assertions with deterministic fixed-precision money output.
+- 2026-03-05: Senior review fixes applied: full-key duplicate matching semantics, batched match posting fetch (N+1 removal), serial subset integration coverage, and partial-overlap non-match unit coverage.
+
+### Senior Developer Review (AI)
+
+- Outcome: Changes Requested (addressed in this pass)
+- Fixed High findings:
+  - Duplicate-risk matching required any overlap key; updated to require full normalized key-set inclusion per candidate transaction.
+  - Story task evidence gap for serial subset behavior; added explicit integration test validating commit/propose/commit serial flow.
+  - Story File List contained non-17.1 artifacts; list narrowed to actual story implementation/testing files.
+- Fixed Medium findings:
+  - Duplicate-risk posting hydration used N+1 queries; replaced with single batched posting query.
+  - Documentation transparency improved with explicit remediation entries in Debug Log and Change Log.
+  - Test evidence refreshed with targeted duplicate-risk run post-fix (`11 passed`).

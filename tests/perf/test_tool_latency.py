@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 
+from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.domain.ledger.repository import create_account
 from capital_os.domain.ledger.service import record_transaction_bundle
@@ -196,3 +197,56 @@ def test_policy_evaluation_overhead_p95_under_50ms(db_available):
 
     p95 = statistics.quantiles(timings, n=20)[-1]
     assert p95 < 50
+
+
+@pytest.mark.performance
+def test_duplicate_risk_proposal_path_p95_under_300ms_smoke(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "1910", "name": "Perf Dup Debit", "account_type": "asset"})
+            credit = create_account(conn, {"code": "2910", "name": "Perf Dup Credit", "account_type": "liability"})
+
+        seed = record_transaction_bundle(
+            {
+                "source_system": "pytest",
+                "external_id": "perf-dup-seed",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "perf duplicate seed",
+                "postings": [
+                    {"account_id": debit, "amount": "12.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-12.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-perf-dup-seed",
+            }
+        )
+        assert seed["status"] == "committed"
+
+        timings: list[float] = []
+        for i in range(25):
+            start = time.perf_counter()
+            proposed = record_transaction_bundle(
+                {
+                    "source_system": "pytest",
+                    "external_id": f"perf-dup-candidate-{i}",
+                    "date": "2026-01-01T08:00:00Z",
+                    "description": "perf duplicate candidate",
+                    "postings": [
+                        {"account_id": debit, "amount": "12.00004", "currency": "USD"},
+                        {"account_id": credit, "amount": "-12.0000", "currency": "USD"},
+                    ],
+                    "correlation_id": f"corr-perf-dup-candidate-{i}",
+                }
+            )
+            timings.append((time.perf_counter() - start) * 1000)
+            assert proposed["status"] == "proposed"
+            assert proposed["match_reason"] == "same_account_date_amount"
+
+        p95 = statistics.quantiles(timings, n=20)[-1]
+        assert p95 < 300
+    finally:
+        get_settings.cache_clear()

@@ -1,6 +1,6 @@
 # Story 17.2: Proposal Contract and Approval Decision Expansion
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -26,23 +26,23 @@ so that approval decisions are informed, auditable, and consistent with existing
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend response schemas for duplicate-risk context (AC: 1, 2, 6)
-  - [ ] Update `RecordTransactionBundleOut` in `src/capital_os/schemas/tools.py` with optional duplicate-risk proposal fields.
-  - [ ] Define strict nested models for `proposed_transaction` and `matched_transactions[]`.
-  - [ ] Ensure unknown keys are rejected and canonical serialization is preserved.
-- [ ] Task 2: Expand proposal payload construction/persistence (AC: 1, 2, 3, 5)
-  - [ ] Update proposal response builder in `src/capital_os/domain/ledger/service.py` to include duplicate-risk context when triggered.
-  - [ ] Persist expanded response payload via existing proposal persistence path.
-  - [ ] Ensure deterministic ordering of matched transaction list.
-- [ ] Task 3: Preserve approval service semantics (AC: 4, 6)
-  - [ ] Verify `approve_proposed_transaction` and `reject_proposed_transaction` remain unchanged in decision semantics.
-  - [ ] Ensure proposal replay after commit/reject remains canonical and deterministic.
-- [ ] Task 4: Add integration/replay coverage for contract behavior (AC: 1–7)
-  - [ ] Integration: proposal response includes full duplicate-risk context fields.
-  - [ ] Integration: approve commits once; repeat approvals replay canonical result.
-  - [ ] Integration: reject remains non-mutating and idempotent.
-  - [ ] Replay: duplicate-risk proposal payload and output hash are reproducible.
-  - [ ] Contract validation: response shape stays backward-compatible for existing clients.
+- [x] Task 1: Extend response schemas for duplicate-risk context (AC: 1, 2, 6)
+  - [x] Update `RecordTransactionBundleOut` in `src/capital_os/schemas/tools.py` with optional duplicate-risk proposal fields.
+  - [x] Define strict nested models for `proposed_transaction` and `matched_transactions[]`.
+  - [x] Ensure unknown keys are rejected and canonical serialization is preserved.
+- [x] Task 2: Expand proposal payload construction/persistence (AC: 1, 2, 3, 5)
+  - [x] Update proposal response builder in `src/capital_os/domain/ledger/service.py` to include duplicate-risk context when triggered.
+  - [x] Persist expanded response payload via existing proposal persistence path.
+  - [x] Ensure deterministic ordering of matched transaction list.
+- [x] Task 3: Preserve approval service semantics (AC: 4, 6)
+  - [x] Verify `approve_proposed_transaction` and `reject_proposed_transaction` remain unchanged in decision semantics.
+  - [x] Ensure proposal replay after commit/reject remains canonical and deterministic.
+- [x] Task 4: Add integration/replay coverage for contract behavior (AC: 1–7)
+  - [x] Integration: proposal response includes full duplicate-risk context fields.
+  - [x] Integration: approve commits once; repeat approvals replay canonical result.
+  - [x] Integration: reject remains non-mutating and idempotent.
+  - [x] Replay: duplicate-risk proposal payload and output hash are reproducible.
+  - [x] Contract validation: response shape stays backward-compatible for existing clients.
 
 ## Dev Notes
 
@@ -74,3 +74,56 @@ so that approval decisions are informed, auditable, and consistent with existing
 - [Source: `_bmad-output/implementation-artifacts/17-1-duplicate-risk-detection-rule-in-write-path.md`]
 - [Source: `_bmad-output/planning-artifacts/epic-4-approval-gates.md`]
 - [Source: `CONSTITUTION.md`]
+
+## Dev Agent Record
+
+### Implementation Plan
+
+- Extend `RecordTransactionBundleOut` with strict nested models for duplicate-risk proposal context while keeping existing response fields optional/backward-compatible.
+- Build deterministic duplicate-risk response context in ledger service and persist canonical proposal response payload for replay hash stability.
+- Verify approval/rejection semantics remain unchanged; add and run integration/replay coverage for contract and determinism behavior.
+
+### Debug Log
+
+- Added strict nested models in `src/capital_os/schemas/tools.py` for `proposed_transaction` and `matched_transactions` with `extra="forbid"`.
+- Added `_duplicate_risk_context` normalization path in `src/capital_os/domain/ledger/service.py` and used it during duplicate-risk proposal construction/persistence.
+- Ensured deterministic ordering of matched transactions and normalized posting amounts/timestamps in proposal payload.
+- Verified `approve_proposed_transaction` and `reject_proposed_transaction` behavior through existing + expanded integration/replay tests.
+- Ran targeted suites:
+- `pytest -q tests/integration/test_approval_workflow.py tests/replay/test_output_replay.py tests/integration/test_event_log_coverage.py tests/integration/test_tool_contract_validation.py`
+- Added explicit success-path contract tests for backward-compatible committed/proposed response shapes and optional duplicate-risk extensions.
+- Added explicit persistence assertions verifying canonical stored proposal payload normalizes to the API response contract with stable `output_hash`.
+
+### Completion Notes
+
+- ✅ AC1/AC2: Duplicate-risk proposal includes `proposed_transaction`, `matched_transactions[]`, and `match_reason` with strict schema validation.
+- ✅ AC3/AC5: Proposal status contract remains `proposed` and expanded payload is persisted/replayed canonically with stable `output_hash`.
+- ✅ AC4/AC6: Approval decision semantics remain one-decision canonical commit for approve, non-mutating idempotent reject, and backward-compatible response fields.
+- ✅ AC7: Proposal + decision paths continue emitting deterministic event logs with correlation IDs and hash fields.
+- ✅ Review remediation: Added direct contract-validation coverage for success-path backward compatibility and explicit duplicate-risk payload persistence checks.
+
+### File List
+
+- src/capital_os/schemas/tools.py
+- src/capital_os/domain/ledger/service.py
+- tests/integration/test_approval_workflow.py
+- tests/integration/test_event_log_coverage.py
+- tests/integration/test_tool_contract_validation.py
+- _bmad-output/implementation-artifacts/17-2-proposal-contract-and-approval-decision-expansion.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-03-05: Completed proposal-contract expansion for duplicate-risk flows, verified approval decision compatibility, and added deterministic replay/integration coverage updates.
+- 2026-03-05: Senior review fixes applied: explicit backward-compat success contract assertions, explicit persisted-payload contract normalization checks, and story traceability corrections.
+
+### Senior Developer Review (AI)
+
+- Outcome: Changes Requested (addressed in this pass)
+- Fixed High findings:
+  - Added explicit success-path backward-compatible contract validation for `record_transaction_bundle` committed/proposed responses.
+  - Corrected story File List to remove unmodified replay file and include actually changed validation/event-log coverage files.
+- Fixed Medium findings:
+  - Corrected Debug Log statement about idempotent replay context path.
+  - Added explicit persisted `approval_proposals.response_payload` normalization checks against API response contract and `output_hash`.
+  - Updated traceability notes to reflect current change set and executed verification.

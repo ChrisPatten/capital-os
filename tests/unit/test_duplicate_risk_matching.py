@@ -50,15 +50,68 @@ def test_find_duplicate_risk_matches_exact_date_account_normalized_amount_determ
     )
 
     with transaction() as conn:
-        matches = find_duplicate_risk_matches(
+        no_match = find_duplicate_risk_matches(
             conn,
             effective_date="2026-02-14T12:30:00Z",
-                postings=[
-                    {"account_id": cash, "amount": "10.00004", "currency": "USD"},
-                    {"account_id": clearing, "amount": "10.0000", "currency": "USD"},
-                ],
-            )
+            postings=[
+                {"account_id": cash, "amount": "10.00004", "currency": "USD"},
+                {"account_id": clearing, "amount": "10.0000", "currency": "USD"},
+            ],
+        )
+        matches_tx_1 = find_duplicate_risk_matches(
+            conn,
+            effective_date="2026-02-14T12:30:00Z",
+            postings=[
+                {"account_id": cash, "amount": "10.00004", "currency": "USD"},
+                {"account_id": revenue, "amount": "-10.0000", "currency": "USD"},
+            ],
+        )
+        matches_tx_2 = find_duplicate_risk_matches(
+            conn,
+            effective_date="2026-02-14T12:30:00Z",
+            postings=[
+                {"account_id": clearing, "amount": "10.0000", "currency": "USD"},
+                {"account_id": equity, "amount": "-10.0000", "currency": "USD"},
+            ],
+        )
 
-    assert [row["transaction_id"] for row in matches] == [tx_1["transaction_id"], tx_2["transaction_id"]]
-    assert [row["external_id"] for row in matches] == ["dup-seed-1", "dup-seed-2"]
-    assert all(row["match_reason"] == "same_account_date_amount" for row in matches)
+    assert no_match == []
+    assert [row["transaction_id"] for row in matches_tx_1] == [tx_1["transaction_id"]]
+    assert [row["transaction_id"] for row in matches_tx_2] == [tx_2["transaction_id"]]
+    assert [row["external_id"] for row in matches_tx_1] == ["dup-seed-1"]
+    assert [row["external_id"] for row in matches_tx_2] == ["dup-seed-2"]
+    assert all(row["match_reason"] == "same_account_date_amount" for row in matches_tx_1 + matches_tx_2)
+
+
+def test_find_duplicate_risk_matches_requires_all_input_keys(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    cash, revenue, clearing, equity = _seed_accounts()
+
+    record_transaction_bundle(
+        {
+            "source_system": "pytest",
+            "external_id": "dup-partial-seed",
+            "date": "2026-02-15T09:00:00Z",
+            "description": "partial match seed",
+            "postings": [
+                {"account_id": cash, "amount": "10.0000", "currency": "USD"},
+                {"account_id": revenue, "amount": "-10.0000", "currency": "USD"},
+            ],
+            "correlation_id": "corr-dup-partial-seed",
+        }
+    )
+
+    with transaction() as conn:
+        matches = find_duplicate_risk_matches(
+            conn,
+            effective_date="2026-02-15T12:30:00Z",
+            postings=[
+                {"account_id": cash, "amount": "10.0000", "currency": "USD"},
+                {"account_id": clearing, "amount": "10.0000", "currency": "USD"},
+                {"account_id": equity, "amount": "-20.0000", "currency": "USD"},
+            ],
+        )
+
+    assert matches == []

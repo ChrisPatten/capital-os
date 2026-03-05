@@ -2,6 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from capital_os.api.app import app
+from capital_os.db.session import transaction
+from capital_os.domain.ledger.repository import create_account
+from capital_os.schemas.tools import RecordTransactionBundleOut
 from tests.support.auth import AUTH_HEADERS
 
 
@@ -180,3 +183,143 @@ def test_query_surface_tools_invalid_payload_returns_deterministic_error_shape(d
     proposal_detail = proposal_response.json()["detail"]
     assert proposal_detail["error"] == "validation_error"
     assert isinstance(proposal_detail["details"], list)
+
+
+def test_record_transaction_bundle_backward_compatible_success_contract(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app, headers=AUTH_HEADERS)
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "8810", "name": "Contract Debit", "account_type": "asset"})
+            credit = create_account(conn, {"code": "8811", "name": "Contract Credit", "account_type": "liability"})
+
+        committed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "contract-committed-1",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "contract committed",
+                "postings": [
+                    {"account_id": debit, "amount": "10.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-10.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-contract-committed-1",
+            },
+        )
+        assert committed.status_code == 200
+        committed_body = committed.json()
+        assert committed_body["status"] == "committed"
+        assert committed_body["transaction_id"]
+        assert isinstance(committed_body["posting_ids"], list)
+        assert committed_body["correlation_id"] == "corr-contract-committed-1"
+        assert committed_body["output_hash"]
+        assert committed_body["proposal_id"] is None
+        assert committed_body["proposed_transaction"] is None
+        assert committed_body["matched_transactions"] == []
+        assert committed_body["match_reason"] is None
+
+        proposed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "contract-proposed-1",
+                "date": "2026-01-01T08:00:00Z",
+                "description": "contract proposed",
+                "postings": [
+                    {"account_id": debit, "amount": "10.00004", "currency": "USD"},
+                    {"account_id": credit, "amount": "-10.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-contract-proposed-1",
+            },
+        )
+        assert proposed.status_code == 200
+        proposed_body = proposed.json()
+        assert proposed_body["status"] == "proposed"
+        assert proposed_body["proposal_id"]
+        assert proposed_body["required_approvals"] >= 1
+        assert proposed_body["approvals_received"] == 0
+        assert proposed_body["correlation_id"] == "corr-contract-proposed-1"
+        assert proposed_body["output_hash"]
+        assert proposed_body["transaction_id"] is None
+        assert proposed_body["posting_ids"] == []
+        assert proposed_body["proposed_transaction"]["external_id"] == "contract-proposed-1"
+        assert proposed_body["matched_transactions"]
+        assert proposed_body["match_reason"] == "same_account_date_amount"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_duplicate_risk_proposal_payload_persistence_matches_response(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.config import get_settings
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app, headers=AUTH_HEADERS)
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "8820", "name": "Persist Debit", "account_type": "asset"})
+            credit = create_account(conn, {"code": "8821", "name": "Persist Credit", "account_type": "liability"})
+
+        seed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "persist-seed-1",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "persist seed",
+                "postings": [
+                    {"account_id": debit, "amount": "12.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-12.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-persist-seed-1",
+            },
+        )
+        assert seed.status_code == 200
+
+        proposed = client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "persist-candidate-1",
+                "date": "2026-01-01T07:00:00Z",
+                "description": "persist candidate",
+                "postings": [
+                    {"account_id": debit, "amount": "12.00004", "currency": "USD"},
+                    {"account_id": credit, "amount": "-12.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-persist-candidate-1",
+            },
+        )
+        assert proposed.status_code == 200
+        body = proposed.json()
+        assert body["status"] == "proposed"
+
+        with transaction() as conn:
+            row = conn.execute(
+                """
+                SELECT response_payload, output_hash
+                FROM approval_proposals
+                WHERE source_system='pytest' AND external_id='persist-candidate-1'
+                """
+            ).fetchone()
+
+        assert row is not None
+        assert row["response_payload"] is not None
+        import json
+        persisted_payload = json.loads(row["response_payload"])
+        normalized_persisted = RecordTransactionBundleOut.model_validate(persisted_payload).model_dump(mode="json")
+        normalized_response = RecordTransactionBundleOut.model_validate(body).model_dump(mode="json")
+        assert normalized_persisted == normalized_response
+        assert row["output_hash"] == body["output_hash"]
+    finally:
+        get_settings.cache_clear()

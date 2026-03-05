@@ -42,14 +42,26 @@ def find_duplicate_risk_matches(
     if not match_keys:
         return []
 
-    predicates = " OR ".join("(p.account_id=? AND p.amount=?)" for _ in match_keys)
-    params: list[Any] = [str(effective_date)]
+    required_values = ",".join("(?, ?)" for _ in match_keys)
+    required_params: list[Any] = []
     for account_id, amount in match_keys:
-        params.extend([account_id, amount])
+        required_params.extend([account_id, amount])
+    key_count = len(match_keys)
 
     rows = conn.execute(
-        f"""
-        SELECT DISTINCT
+        f"""        WITH required_keys(account_id, amount) AS (
+          VALUES {required_values}
+        ),
+        matched_transactions AS (
+          SELECT t.transaction_id
+          FROM ledger_transactions t
+          JOIN ledger_postings p ON p.transaction_id = t.transaction_id
+          JOIN required_keys rk ON rk.account_id = p.account_id AND rk.amount = p.amount
+          WHERE date(t.transaction_date) = date(?)
+          GROUP BY t.transaction_id
+          HAVING COUNT(DISTINCT rk.account_id || '|' || rk.amount) = ?
+        )
+        SELECT
           t.transaction_id,
           t.source_system,
           t.external_id,
@@ -58,26 +70,29 @@ def find_duplicate_risk_matches(
           t.correlation_id,
           t.entity_id
         FROM ledger_transactions t
-        JOIN ledger_postings p ON p.transaction_id = t.transaction_id
-        WHERE date(t.transaction_date) = date(?)
-          AND ({predicates})
+        JOIN matched_transactions mt ON mt.transaction_id = t.transaction_id
         ORDER BY t.transaction_date ASC, t.transaction_id ASC
         """,
-        tuple(params),
+        tuple([*required_params, str(effective_date), key_count]),
     ).fetchall()
 
-    result: list[dict[str, Any]] = []
-    for row in rows:
-        posting_rows = conn.execute(
-            """
-            SELECT posting_id, account_id, amount, currency, memo
-            FROM ledger_postings
-            WHERE transaction_id=?
-            ORDER BY account_id ASC, amount ASC, posting_id ASC
-            """,
-            (row["transaction_id"],),
-        ).fetchall()
-        postings_payload = [
+    if not rows:
+        return []
+
+    tx_ids = [row["transaction_id"] for row in rows]
+    tx_posting_map: dict[str, list[dict[str, Any]]] = {tx_id: [] for tx_id in tx_ids}
+    placeholders = ",".join("?" for _ in tx_ids)
+    posting_rows = conn.execute(
+        f"""
+        SELECT posting_id, transaction_id, account_id, amount, currency, memo
+        FROM ledger_postings
+        WHERE transaction_id IN ({placeholders})
+        ORDER BY transaction_id ASC, account_id ASC, amount ASC, posting_id ASC
+        """,
+        tuple(tx_ids),
+    ).fetchall()
+    for posting in posting_rows:
+        tx_posting_map[posting["transaction_id"]].append(
             {
                 "posting_id": posting["posting_id"],
                 "account_id": posting["account_id"],
@@ -85,9 +100,10 @@ def find_duplicate_risk_matches(
                 "currency": posting["currency"],
                 "memo": posting["memo"],
             }
-            for posting in posting_rows
-        ]
+        )
 
+    result: list[dict[str, Any]] = []
+    for row in rows:
         result.append(
             {
                 "match_reason": "same_account_date_amount",
@@ -98,7 +114,7 @@ def find_duplicate_risk_matches(
                 "description": row["description"],
                 "correlation_id": row["correlation_id"],
                 "entity_id": row["entity_id"],
-                "postings": postings_payload,
+                "postings": tx_posting_map[row["transaction_id"]],
             }
         )
     return result

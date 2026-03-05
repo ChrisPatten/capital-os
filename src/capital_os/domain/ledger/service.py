@@ -68,6 +68,47 @@ def _proposal_transaction_payload(payload: dict) -> dict:
     }
 
 
+def _duplicate_risk_context(*, tx_payload: dict, duplicate_matches: list[dict]) -> dict:
+    normalized_matches = []
+    for match in duplicate_matches:
+        normalized_postings = sorted(
+            match["postings"],
+            key=lambda posting: (
+                posting["account_id"],
+                str(normalize_amount(posting["amount"])),
+                posting["posting_id"],
+            ),
+        )
+        normalized_matches.append(
+            {
+                "match_reason": "same_account_date_amount",
+                "transaction_id": match["transaction_id"],
+                "source_system": match["source_system"],
+                "external_id": match["external_id"],
+                "date": _as_utc_iso(match["date"]),
+                "description": match["description"],
+                "correlation_id": match["correlation_id"],
+                "entity_id": match.get("entity_id", DEFAULT_ENTITY_ID),
+                "postings": [
+                    {
+                        "posting_id": posting["posting_id"],
+                        "account_id": posting["account_id"],
+                        "amount": str(normalize_amount(posting["amount"])),
+                        "currency": posting["currency"],
+                        "memo": posting.get("memo"),
+                    }
+                    for posting in normalized_postings
+                ],
+            }
+        )
+    normalized_matches.sort(key=lambda match: (match["date"], match["transaction_id"]))
+    return {
+        "match_reason": "same_account_date_amount",
+        "proposed_transaction": _proposal_transaction_payload(tx_payload),
+        "matched_transactions": normalized_matches,
+    }
+
+
 def _proposal_response_payload(
     proposal: dict,
     *,
@@ -169,11 +210,10 @@ def record_transaction_bundle(payload: dict) -> dict:
 
                 duplicate_context = None
                 if duplicate_approval_required:
-                    duplicate_context = {
-                        "match_reason": "same_account_date_amount",
-                        "proposed_transaction": _proposal_transaction_payload(tx_payload),
-                        "matched_transactions": duplicate_matches,
-                    }
+                    duplicate_context = _duplicate_risk_context(
+                        tx_payload=tx_payload,
+                        duplicate_matches=duplicate_matches,
+                    )
 
                 response = _proposal_response_payload(proposal, duplicate_context=duplicate_context)
                 if not proposal.get("response_payload"):
@@ -244,7 +284,21 @@ def record_transaction_bundle(payload: dict) -> dict:
             if not proposal:
                 raise
 
-            response = _proposal_response_payload(proposal)
+            tx_payload = dict(payload)
+            tx_payload.setdefault("entity_id", DEFAULT_ENTITY_ID)
+            duplicate_matches = find_duplicate_risk_matches(
+                conn,
+                effective_date=tx_payload["date"],
+                postings=tx_payload["postings"],
+            )
+            duplicate_context = None
+            if duplicate_matches:
+                duplicate_context = _duplicate_risk_context(
+                    tx_payload=tx_payload,
+                    duplicate_matches=duplicate_matches,
+                )
+
+            response = _proposal_response_payload(proposal, duplicate_context=duplicate_context)
             if not proposal.get("response_payload"):
                 persist_proposal_result(
                     conn,

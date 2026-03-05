@@ -53,6 +53,46 @@ class RecordTransactionBundleIn(BaseModel):
 class RecordTransactionBundleOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    class ProposedTransactionPosting(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        account_id: str
+        amount: Decimal
+        currency: Literal["USD"]
+        memo: str | None = None
+
+    class ProposedTransaction(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        source_system: str
+        external_id: str
+        date: datetime
+        description: str
+        entity_id: str = DEFAULT_ENTITY_ID
+        postings: list["RecordTransactionBundleOut.ProposedTransactionPosting"] = Field(min_length=2)
+
+    class MatchedTransactionPosting(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        posting_id: str
+        account_id: str
+        amount: Decimal
+        currency: Literal["USD"]
+        memo: str | None = None
+
+    class MatchedTransaction(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        match_reason: Literal["same_account_date_amount"]
+        transaction_id: str
+        source_system: str
+        external_id: str
+        date: datetime
+        description: str
+        correlation_id: str
+        entity_id: str
+        postings: list["RecordTransactionBundleOut.MatchedTransactionPosting"] = Field(min_length=2)
+
     status: Literal["committed", "idempotent-replay", "proposed", "rejected"]
     transaction_id: str | None = None
     posting_ids: list[str] = Field(default_factory=list)
@@ -62,8 +102,8 @@ class RecordTransactionBundleOut(BaseModel):
     matched_rule_id: str | None = None
     required_approvals: int | None = None
     approvals_received: int | None = None
-    proposed_transaction: dict | None = None
-    matched_transactions: list[dict] = Field(default_factory=list)
+    proposed_transaction: ProposedTransaction | None = None
+    matched_transactions: list[MatchedTransaction] = Field(default_factory=list)
     match_reason: Literal["same_account_date_amount"] | None = None
     correlation_id: str
     output_hash: str

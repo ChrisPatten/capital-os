@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from capital_os.api.app import TOOL_HANDLERS, app
 from capital_os.config import get_settings
 from capital_os.db.session import transaction
+from capital_os.domain.ledger.repository import create_account
 from tests.support.auth import AUTH_HEADERS, READ_ONLY_AUTH_HEADERS
 
 
@@ -141,3 +142,106 @@ def test_tool_surface_has_authn_and_authz_coverage(db_available):
             assert reader_response.status_code != 403, tool_name
         else:
             assert reader_response.status_code == 403, tool_name
+
+
+def test_duplicate_risk_write_and_decision_paths_require_write_capability(db_available, monkeypatch):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    monkeypatch.setenv("CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT", "1000.0000")
+    get_settings.cache_clear()
+    try:
+        admin_client = TestClient(app, headers=AUTH_HEADERS)
+        reader_client = TestClient(app, headers=READ_ONLY_AUTH_HEADERS)
+
+        with transaction() as conn:
+            debit = create_account(conn, {"code": "1810", "name": "Authz Dup Debit", "account_type": "asset"})
+            credit = create_account(
+                conn, {"code": "2810", "name": "Authz Dup Credit", "account_type": "liability"}
+            )
+
+        seed = admin_client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "authz-dup-seed",
+                "date": "2026-01-01T00:00:00Z",
+                "description": "authz duplicate seed",
+                "postings": [
+                    {"account_id": debit, "amount": "55.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-55.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-authz-dup-seed",
+            },
+        )
+        assert seed.status_code == 200
+        assert seed.json()["status"] == "committed"
+
+        denied_duplicate_write = reader_client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "authz-dup-denied-write",
+                "date": "2026-01-01T11:00:00Z",
+                "description": "reader denied duplicate write",
+                "postings": [
+                    {"account_id": debit, "amount": "55.00004", "currency": "USD"},
+                    {"account_id": credit, "amount": "-55.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-authz-dup-denied-write",
+            },
+        )
+        assert denied_duplicate_write.status_code == 403
+        assert denied_duplicate_write.json()["detail"] == {"error": "forbidden"}
+
+        proposed = admin_client.post(
+            "/tools/record_transaction_bundle",
+            json={
+                "source_system": "pytest",
+                "external_id": "authz-dup-proposal",
+                "date": "2026-01-01T12:00:00Z",
+                "description": "authz duplicate proposal",
+                "postings": [
+                    {"account_id": debit, "amount": "55.0000", "currency": "USD"},
+                    {"account_id": credit, "amount": "-55.0000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-authz-dup-proposal",
+            },
+        )
+        assert proposed.status_code == 200
+        proposal_id = proposed.json()["proposal_id"]
+        assert proposal_id
+
+        denied_approve = reader_client.post(
+            "/tools/approve_proposed_transaction",
+            json={
+                "proposal_id": proposal_id,
+                "reason": "reader cannot approve",
+                "correlation_id": "corr-authz-dup-denied-approve",
+            },
+        )
+        assert denied_approve.status_code == 403
+        assert denied_approve.json()["detail"] == {"error": "forbidden"}
+
+        denied_reject = reader_client.post(
+            "/tools/reject_proposed_transaction",
+            json={
+                "proposal_id": proposal_id,
+                "reason": "reader cannot reject",
+                "correlation_id": "corr-authz-dup-denied-reject",
+            },
+        )
+        assert denied_reject.status_code == 403
+        assert denied_reject.json()["detail"] == {"error": "forbidden"}
+
+        with transaction() as conn:
+            tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+            proposal_status = conn.execute(
+                "SELECT status FROM approval_proposals WHERE proposal_id=?",
+                (proposal_id,),
+            ).fetchone()["status"]
+
+        assert tx_count == 1
+        assert proposal_status == "proposed"
+    finally:
+        get_settings.cache_clear()

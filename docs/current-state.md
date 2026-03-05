@@ -1,6 +1,6 @@
 # Current Implementation State
 
-As of 2026-02-23.
+As of 2026-03-05.
 
 ## Delivery Snapshot
 - Runtime stack is active: Python 3.11+, FastAPI transport, SQLite canonical store, Pytest suite.
@@ -18,6 +18,10 @@ As of 2026-02-23.
 - Spend simulation tooling from Epic 2 is implemented and tested.
 - Debt analysis tooling from Epic 3 is implemented and tested.
 - Approval-gated write workflow from Epic 4 is implemented and tested.
+- Epic 17 duplicate-risk approval hardening is in progress:
+  - 17-1 duplicate-risk detection gate: `done`
+  - 17-2 proposal contract expansion: `done`
+  - 17-3 authz/audit/determinism/perf coverage hardening: `review`
 - Epic 6 read/query surface is implemented (Stories 6.1, 6.2, 6.3).
 - Epic 7 reconciliation and truth policy tooling is implemented.
 - Epic 8 multi-entity core stories are implemented.
@@ -206,9 +210,11 @@ Implemented DB protections include:
 - Transaction bundles enforce balanced postings in service logic.
 - Tool payload hashing normalizes key ordering, decimals, and date/time formatting.
 - Duplicate `(source_system, external_id)` transaction requests return idempotent replay response.
+- Duplicate-risk transaction writes are routed to deterministic `status="proposed"` responses with side-by-side match context and canonical replay hash behavior.
 - Above-threshold transaction requests return deterministic `status="proposed"` responses and do not mutate canonical ledger tables.
 - Approval decision paths (`approve` / `reject`) are deterministic and auditable.
 - Tool events are persisted for success and validation failures.
+- Duplicate-risk write and approval decision paths are authz-gated to `tools:write`, event-logged for success/validation outcomes, and fail-closed on event-log persistence failures.
 
 ## Known Gaps Against AGENTS.md "Phase 1 Scope (In)"
 - Full stress/perf validation against the reference dataset scale in AGENTS.md is not yet present; current perf tests are smoke-level.

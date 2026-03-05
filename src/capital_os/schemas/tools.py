@@ -1093,4 +1093,40 @@ class UpdateAccountMetadataOut(BaseModel):
     output_hash: str
 
 
+class UpdateAccountProfileIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    source_system: str
+    external_id: str
+    display_name: str | None = Field(default=None, min_length=1, max_length=256)
+    institution_name: str | None = Field(default=None, min_length=1, max_length=256)
+    institution_suffix: str | None = Field(default=None, min_length=1, max_length=128)
+    correlation_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_at_least_one_mutable_field(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        mutable_fields = ("display_name", "institution_name", "institution_suffix")
+        if not any(field in data for field in mutable_fields):
+            raise ValueError(
+                "at least one mutable field is required: display_name, institution_name, institution_suffix"
+            )
+        return data
+
+
+class UpdateAccountProfileOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    display_name: str
+    institution_name: str | None = None
+    institution_suffix: str | None = None
+    status: Literal["committed"]
+    correlation_id: str
+    output_hash: str
+
+
 TreeAccountNode.model_rebuild()

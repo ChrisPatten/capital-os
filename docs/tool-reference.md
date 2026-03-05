@@ -6,7 +6,9 @@ As of 2026-02-23, the service exposes both an HTTP API (`POST /tools/{tool_name}
 
 ### HTTP Adapter
 - Endpoint: `POST /tools/{tool_name}`
-- Requires `x-capital-auth-token` and `x-correlation-id` (or `correlation_id` in body) headers.
+- Requires `x-capital-auth-token`.
+- `correlation_id` is required in request body for all tools.
+- `x-correlation-id` header is additionally enforced for `update_account_profile` and must match body `correlation_id`.
 - Returns JSON with HTTP status codes.
 
 ### CLI Adapter (Trusted Local Channel)
@@ -107,6 +109,43 @@ capital-os tool call create_account \
 - Returns full merged `metadata`, `account_id`, `status = "committed"`, `correlation_id`, and `output_hash` on success.
 - Logs event in same transaction (fail-closed).
 - Capability: `tools:write`.
+
+## `update_account_profile`
+- Handler: `src/capital_os/tools/update_account_profile.py`
+- Domain service: `src/capital_os/domain/accounts/service.py::update_account_profile`
+- Input schema: `UpdateAccountProfileIn`
+- Output schema: `UpdateAccountProfileOut`
+
+### Behavior
+- Standard single-account profile update path for account renames and institution reference updates.
+- Required fields: `account_id`, `source_system`, `external_id`, `correlation_id`.
+- Mutable fields: `display_name`, `institution_name`, `institution_suffix`.
+- Validation requires at least one mutable field (`display_name`, `institution_name`, or `institution_suffix`).
+- `display_name` updates `accounts.name`.
+- `institution_name` and `institution_suffix` are maintained in account metadata.
+- Idempotent on `(tool_name='update_account_profile', source_system, external_id)` and returns canonical prior result on duplicates.
+- On identifier evolution, history is persisted in `account_identifier_history`:
+  - active row (`valid_to IS NULL`) is closed with `valid_to`.
+  - new active row is inserted with `valid_from`.
+- Logs event in same transaction (fail-closed).
+- Capability: `tools:write`.
+
+### Identifier History SQL (Phase 1 direct SQL reads)
+```sql
+-- Active identifier for one account+source
+SELECT account_id, source_system, external_id, institution_suffix, valid_from, valid_to
+FROM account_identifier_history
+WHERE account_id = :account_id
+  AND source_system = :source_system
+  AND valid_to IS NULL;
+
+-- Full identifier timeline for one account+source
+SELECT account_id, source_system, external_id, institution_suffix, valid_from, valid_to, correlation_id
+FROM account_identifier_history
+WHERE account_id = :account_id
+  AND source_system = :source_system
+ORDER BY valid_from ASC, history_id ASC;
+```
 
 ## `record_transaction_bundle`
 - Handler: `src/capital_os/tools/record_transaction_bundle.py`

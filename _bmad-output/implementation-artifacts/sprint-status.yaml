@@ -144,7 +144,7 @@ development_status:
   epic-17-retrospective: optional
 
   epic-18: in-progress
-  18-1-update-account-profile-tool: ready-for-dev
-  18-2-account-identifier-history-and-suffix-changes: ready-for-dev
-  18-3-update-account-profile-security-determinism-and-docs: ready-for-dev
+  18-1-update-account-profile-tool: done
+  18-2-account-identifier-history-and-suffix-changes: done
+  18-3-update-account-profile-security-determinism-and-docs: done
   epic-18-retrospective: optional

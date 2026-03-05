@@ -335,6 +335,108 @@ def create_account(conn, payload: dict[str, Any]) -> str:
     return account_id
 
 
+def fetch_account_profile(conn, account_id: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT account_id, name, metadata
+        FROM accounts
+        WHERE account_id = ?
+        """,
+        (account_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "account_id": row["account_id"],
+        "display_name": row["name"],
+        "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+    }
+
+
+def update_account_profile_fields(
+    conn,
+    *,
+    account_id: str,
+    display_name: str,
+    metadata: dict[str, Any],
+) -> None:
+    conn.execute(
+        """
+        UPDATE accounts
+        SET name = ?, metadata = ?
+        WHERE account_id = ?
+        """,
+        (
+            display_name,
+            json.dumps(metadata, separators=(",", ":"), sort_keys=True),
+            account_id,
+        ),
+    )
+
+
+def fetch_active_account_identifier_history(
+    conn,
+    *,
+    account_id: str,
+    source_system: str,
+) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT history_id, account_id, source_system, external_id, institution_suffix, valid_from, valid_to
+        FROM account_identifier_history
+        WHERE account_id = ? AND source_system = ? AND valid_to IS NULL
+        """,
+        (account_id, source_system),
+    ).fetchone()
+    if not row:
+        return None
+    return dict(row)
+
+
+def close_account_identifier_history(
+    conn,
+    *,
+    history_id: str,
+    valid_to: str,
+) -> None:
+    conn.execute(
+        """
+        UPDATE account_identifier_history
+        SET valid_to = ?
+        WHERE history_id = ? AND valid_to IS NULL
+        """,
+        (valid_to, history_id),
+    )
+
+
+def insert_account_identifier_history(
+    conn,
+    *,
+    account_id: str,
+    source_system: str,
+    external_id: str,
+    institution_suffix: str | None,
+    correlation_id: str,
+    valid_from: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO account_identifier_history (
+          history_id, account_id, source_system, external_id, institution_suffix, valid_from, correlation_id
+        ) VALUES (?,?,?,?,?,?,?)
+        """,
+        (
+            str(uuid4()),
+            account_id,
+            source_system,
+            external_id,
+            institution_suffix,
+            valid_from,
+            correlation_id,
+        ),
+    )
+
+
 def list_accounts_subtree(conn, root_account_id: str | None = None) -> list[dict[str, Any]]:
     if root_account_id:
         rows = conn.execute(

@@ -1,0 +1,5 @@
+DROP TRIGGER IF EXISTS trg_account_identifier_history_append_only_delete;
+DROP TRIGGER IF EXISTS trg_account_identifier_history_append_only_update;
+DROP INDEX IF EXISTS idx_account_identifier_history_active;
+DROP INDEX IF EXISTS idx_account_identifier_history_account_source_from;
+DROP TABLE IF EXISTS account_identifier_history;

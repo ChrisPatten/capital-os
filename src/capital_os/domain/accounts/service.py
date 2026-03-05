@@ -2,11 +2,25 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from time import perf_counter
 
+from capital_os.domain.approval.repository import (
+    fetch_proposal_by_source_external,
+    insert_proposal,
+    persist_proposal_result,
+)
 from capital_os.db.session import transaction
 from capital_os.domain.entities import DEFAULT_ENTITY_ID
-from capital_os.domain.ledger.repository import create_account, list_accounts_subtree
+from capital_os.domain.ledger.repository import (
+    close_account_identifier_history,
+    create_account,
+    fetch_active_account_identifier_history,
+    fetch_account_profile,
+    insert_account_identifier_history,
+    list_accounts_subtree,
+    update_account_profile_fields,
+)
 from capital_os.observability.event_log import log_event
 from capital_os.observability.hashing import payload_hash
 
@@ -117,3 +131,162 @@ def list_account_subtree(root_account_id: str | None = None) -> dict:
     with transaction() as conn:
         rows = list_accounts_subtree(conn, root_account_id)
     return {"accounts": rows}
+
+
+def update_account_profile(payload: dict) -> dict:
+    started = perf_counter()
+    input_hash = payload_hash(payload)
+
+    with transaction() as conn:
+        proposal = fetch_proposal_by_source_external(
+            conn,
+            tool_name="update_account_profile",
+            source_system=payload["source_system"],
+            external_id=payload["external_id"],
+        )
+        if proposal is not None and proposal.get("response_payload"):
+            response = dict(proposal["response_payload"])
+            output_hash = response.get("output_hash") or payload_hash(response)
+            response["output_hash"] = output_hash
+            log_event(
+                conn,
+                tool_name="update_account_profile",
+                correlation_id=payload["correlation_id"],
+                input_hash=input_hash,
+                output_hash=output_hash,
+                duration_ms=int((perf_counter() - started) * 1000),
+                status="ok",
+            )
+            return response
+
+        proposal_id: str
+        try:
+            proposal_id = insert_proposal(
+                conn,
+                tool_name="update_account_profile",
+                source_system=payload["source_system"],
+                external_id=payload["external_id"],
+                correlation_id=payload["correlation_id"],
+                input_hash=input_hash,
+                policy_threshold_amount="0.0000",
+                impact_amount="0.0000",
+                request_payload=payload,
+                matched_rule_id=None,
+                required_approvals=1,
+            )
+        except sqlite3.IntegrityError:
+            replay = fetch_proposal_by_source_external(
+                conn,
+                tool_name="update_account_profile",
+                source_system=payload["source_system"],
+                external_id=payload["external_id"],
+            )
+            if replay is None or not replay.get("response_payload"):
+                raise
+            response = dict(replay["response_payload"])
+            output_hash = response.get("output_hash") or payload_hash(response)
+            response["output_hash"] = output_hash
+            log_event(
+                conn,
+                tool_name="update_account_profile",
+                correlation_id=payload["correlation_id"],
+                input_hash=input_hash,
+                output_hash=output_hash,
+                duration_ms=int((perf_counter() - started) * 1000),
+                status="ok",
+            )
+            return response
+
+        current = fetch_account_profile(conn, payload["account_id"])
+        if current is None:
+            raise ValueError(f"account_id '{payload['account_id']}' does not exist")
+
+        display_name = current["display_name"]
+        if "display_name" in payload:
+            display_name = payload["display_name"]
+
+        metadata = dict(current["metadata"])
+        if "institution_name" in payload:
+            if payload["institution_name"] is None:
+                metadata.pop("institution_name", None)
+            else:
+                metadata["institution_name"] = payload["institution_name"]
+        if "institution_suffix" in payload:
+            if payload["institution_suffix"] is None:
+                metadata.pop("institution_suffix", None)
+            else:
+                metadata["institution_suffix"] = payload["institution_suffix"]
+
+        update_account_profile_fields(
+            conn,
+            account_id=payload["account_id"],
+            display_name=display_name,
+            metadata=metadata,
+        )
+
+        active_identifier = fetch_active_account_identifier_history(
+            conn,
+            account_id=payload["account_id"],
+            source_system=payload["source_system"],
+        )
+        now_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        next_suffix = metadata.get("institution_suffix")
+
+        if active_identifier is None:
+            insert_account_identifier_history(
+                conn,
+                account_id=payload["account_id"],
+                source_system=payload["source_system"],
+                external_id=payload["external_id"],
+                institution_suffix=next_suffix,
+                correlation_id=payload["correlation_id"],
+                valid_from=now_utc,
+            )
+        else:
+            active_external_id = active_identifier["external_id"]
+            active_suffix = active_identifier["institution_suffix"]
+            if active_external_id != payload["external_id"] or active_suffix != next_suffix:
+                close_account_identifier_history(
+                    conn,
+                    history_id=active_identifier["history_id"],
+                    valid_to=now_utc,
+                )
+                insert_account_identifier_history(
+                    conn,
+                    account_id=payload["account_id"],
+                    source_system=payload["source_system"],
+                    external_id=payload["external_id"],
+                    institution_suffix=next_suffix,
+                    correlation_id=payload["correlation_id"],
+                    valid_from=now_utc,
+                )
+
+        response = {
+            "account_id": payload["account_id"],
+            "display_name": display_name,
+            "institution_name": metadata.get("institution_name"),
+            "institution_suffix": metadata.get("institution_suffix"),
+            "status": "committed",
+            "correlation_id": payload["correlation_id"],
+        }
+        output_hash = payload_hash(response)
+        response["output_hash"] = output_hash
+
+        persist_proposal_result(
+            conn,
+            proposal_id=proposal_id,
+            status="committed",
+            response_payload=response,
+            output_hash=output_hash,
+        )
+
+        log_event(
+            conn,
+            tool_name="update_account_profile",
+            correlation_id=payload["correlation_id"],
+            input_hash=input_hash,
+            output_hash=output_hash,
+            duration_ms=int((perf_counter() - started) * 1000),
+            status="ok",
+        )
+        return response

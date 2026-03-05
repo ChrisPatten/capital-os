@@ -56,6 +56,7 @@ from capital_os.tools import (
     reject_proposed_transaction,
     simulate_spend,
     update_account_metadata,
+    update_account_profile,
 )
 
 CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -63,6 +64,7 @@ CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 WRITE_TOOLS = {
     "create_account",
     "update_account_metadata",
+    "update_account_profile",
     "record_transaction_bundle",
     "record_balance_snapshot",
     "create_or_update_obligation",
@@ -100,6 +102,7 @@ TOOL_HANDLERS = {
     "approve_config_change": approve_config_change.handle,
     "reconcile_account": reconcile_account.handle,
     "update_account_metadata": update_account_metadata.handle,
+    "update_account_profile": update_account_profile.handle,
     "close_period": close_period.handle,
     "lock_period": lock_period.handle,
 }

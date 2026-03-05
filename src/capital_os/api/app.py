@@ -16,6 +16,7 @@ from capital_os.security import (
 
 app = FastAPI(title="Capital OS")
 AUTH_TOKEN_HEADER = "x-capital-auth-token"
+CORRELATION_ID_HEADER = "x-correlation-id"
 
 # HTTP status code mapping from ToolResult.status
 _STATUS_CODE_MAP = {
@@ -122,6 +123,63 @@ async def run_tool(tool_name: str, request: Request):
             authorization_result="denied",
         )
         raise HTTPException(status_code=403, detail=error_payload)
+
+    # --- 2b. Tool-specific correlation header enforcement ---
+    if tool_name == "update_account_profile":
+        header_correlation_id = request.headers.get(CORRELATION_ID_HEADER)
+        body_correlation_id = payload.get("correlation_id")
+        if not isinstance(header_correlation_id, str) or not header_correlation_id:
+            error_payload = {
+                "error": "validation_error",
+                "details": [
+                    {
+                        "type": "value_error",
+                        "loc": ["header", CORRELATION_ID_HEADER],
+                        "msg": f"{CORRELATION_ID_HEADER} header is required",
+                    }
+                ],
+            }
+            output_hash = payload_hash(error_payload)
+            _emit_event(
+                tool_name=tool_name,
+                correlation_id=body_correlation_id if isinstance(body_correlation_id, str) else "unknown",
+                input_hash=input_hash,
+                output_hash=output_hash,
+                duration_ms=int((perf_counter() - started) * 1000),
+                status="validation_error",
+                error_code="validation_error",
+                error_message="validation_error",
+                actor_id=auth_context.actor_id,
+                authn_method=auth_context.authn_method,
+                authorization_result="allowed",
+            )
+            raise HTTPException(status_code=422, detail=error_payload)
+        if body_correlation_id != header_correlation_id:
+            error_payload = {
+                "error": "validation_error",
+                "details": [
+                    {
+                        "type": "value_error",
+                        "loc": ["header", CORRELATION_ID_HEADER],
+                        "msg": f"{CORRELATION_ID_HEADER} must match body correlation_id",
+                    }
+                ],
+            }
+            output_hash = payload_hash(error_payload)
+            _emit_event(
+                tool_name=tool_name,
+                correlation_id=body_correlation_id if isinstance(body_correlation_id, str) else "unknown",
+                input_hash=input_hash,
+                output_hash=output_hash,
+                duration_ms=int((perf_counter() - started) * 1000),
+                status="validation_error",
+                error_code="validation_error",
+                error_message="validation_error",
+                actor_id=auth_context.actor_id,
+                authn_method=auth_context.authn_method,
+                authorization_result="allowed",
+            )
+            raise HTTPException(status_code=422, detail=error_payload)
 
     # --- 3. Delegate to shared runtime executor ---
     result = execute_tool(

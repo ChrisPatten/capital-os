@@ -212,6 +212,45 @@ capital-os tool call update_account_metadata --json '{
 }'
 ```
 
+## Account profile updates (renames + suffix/reference evolution)
+
+Use `update_account_profile` for normal single-account rename/profile maintenance.
+
+```bash
+capital-os tool call update_account_profile --json '{
+  "account_id": "<account_id>",
+  "display_name": "Primary Checking",
+  "institution_name": "River Credit Union",
+  "institution_suffix": "SFX-2026-A",
+  "source_system": "manual",
+  "external_id": "acct-profile-2026-03-05-001",
+  "correlation_id": "acct-profile-001"
+}'
+```
+
+Notes:
+- Idempotency key: `(source_system, external_id)`.
+- Duplicate idempotency keys return the canonical prior response.
+- Identifier/suffix history is persisted automatically and read via direct SQL in Phase 1.
+
+### Identifier history SQL
+
+```sql
+-- Active identifier row
+SELECT account_id, source_system, external_id, institution_suffix, valid_from, valid_to
+FROM account_identifier_history
+WHERE account_id = :account_id
+  AND source_system = :source_system
+  AND valid_to IS NULL;
+
+-- Full history timeline
+SELECT account_id, source_system, external_id, institution_suffix, valid_from, valid_to, correlation_id
+FROM account_identifier_history
+WHERE account_id = :account_id
+  AND source_system = :source_system
+ORDER BY valid_from ASC, history_id ASC;
+```
+
 ## Error handling
 
 | Exit code | Meaning |

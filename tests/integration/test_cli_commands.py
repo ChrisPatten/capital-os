@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -37,6 +38,7 @@ _CLI_CMD = [sys.executable, "-m", "capital_os.cli.main"]
 _TIMEOUT = 10  # seconds — protects against hung subprocesses
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC_PATH = _REPO_ROOT / "src"
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 WRITE_TOOL = "create_account"
 READ_TOOL = "list_accounts"
@@ -67,6 +69,11 @@ def _run(
     )
 
 
+def _stdout_without_ansi(result: subprocess.CompletedProcess) -> str:
+    """Return stdout with ANSI escape sequences removed."""
+    return _ANSI_ESCAPE_RE.sub("", result.stdout)
+
+
 def _db_path() -> str:
     """Return the absolute path to the current test SQLite file."""
     url = get_settings().db_url  # e.g. "sqlite:///./data/capital_os.db"
@@ -95,50 +102,61 @@ def _reset_db(db_available: bool, clean_db) -> None:  # noqa: PT004
 
 def test_root_help_contains_commands() -> None:
     result = _run(["--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "health" in result.stdout
-    assert "tool" in result.stdout
-    assert "serve" in result.stdout
+    assert "health" in stdout
+    assert "tool" in stdout
+    assert "serve" in stdout
 
 
 def test_health_help_smoke() -> None:
     result = _run(["health", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "--db-path" in result.stdout
+    assert "--db-path" in stdout
 
 
 def test_tool_help_smoke() -> None:
     result = _run(["tool", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "list" in result.stdout
-    assert "schema" in result.stdout
-    assert "call" in result.stdout
+    assert "list" in stdout
+    assert "schema" in stdout
+    assert "call" in stdout
 
 
 def test_tool_list_help_smoke() -> None:
     result = _run(["tool", "list", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "--db-path" in result.stdout
+    assert "--db-path" in stdout
 
 
 def test_tool_schema_help_smoke() -> None:
     result = _run(["tool", "schema", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "--db-path" in result.stdout
+    assert "--db-path" in stdout
 
 
 def test_tool_call_help_has_examples() -> None:
     result = _run(["tool", "call", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
     # Help text must include example content (from docstring)
-    assert "stdin" in result.stdout.lower() or "example" in result.stdout.lower() or "--json" in result.stdout
+    assert (
+        "stdin" in stdout.lower()
+        or "example" in stdout.lower()
+        or "--json" in stdout
+    )
 
 
 def test_serve_help_smoke() -> None:
     result = _run(["serve", "--help"])
+    stdout = _stdout_without_ansi(result)
     assert result.returncode == 0
-    assert "--host" in result.stdout
-    assert "--port" in result.stdout
+    assert "--host" in stdout
+    assert "--port" in stdout
 
 
 # ---------------------------------------------------------------------------

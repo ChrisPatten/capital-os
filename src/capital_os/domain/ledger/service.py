@@ -40,6 +40,21 @@ def _as_utc_iso(value: object) -> str:
     return dt.isoformat().replace("+00:00", "Z")
 
 
+def _validate_posting_accounts(conn, postings: list[dict]) -> None:
+    account_ids = sorted({p["account_id"] for p in postings})
+    if not account_ids:
+        return
+    placeholders = ",".join("?" for _ in account_ids)
+    rows = conn.execute(
+        f"SELECT account_id FROM accounts WHERE account_id IN ({placeholders})",
+        tuple(account_ids),
+    ).fetchall()
+    found = {row["account_id"] for row in rows}
+    missing = sorted(set(account_ids) - found)
+    if missing:
+        raise InvariantError(f"unknown account_ids: {missing}")
+
+
 def _proposal_transaction_payload(payload: dict) -> dict:
     postings = sorted(
         payload["postings"],
@@ -162,6 +177,7 @@ def record_transaction_bundle(payload: dict) -> dict:
 
             tx_payload = dict(payload)
             tx_payload.setdefault("entity_id", DEFAULT_ENTITY_ID)
+            _validate_posting_accounts(conn, tx_payload["postings"])
             force_approval = enforce_period_write_constraints(conn, tx_payload)
             policy_decision = evaluate_transaction_policy(
                 conn,

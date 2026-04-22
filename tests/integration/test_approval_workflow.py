@@ -7,6 +7,7 @@ import pytest
 from capital_os.config import get_settings
 from capital_os.db.session import transaction
 from capital_os.domain.approval.service import approve_proposed_transaction, reject_proposed_transaction
+from capital_os.domain.ledger.invariants import InvariantError
 from capital_os.domain.ledger.repository import create_account, insert_transaction_bundle
 from capital_os.domain.ledger.service import record_transaction_bundle
 from capital_os.observability.hashing import payload_hash
@@ -413,6 +414,37 @@ def test_duplicate_risk_proposals_are_deterministic_under_concurrency(db_availab
 
     assert tx_count == 1
     assert proposal_count == 1
+
+
+def test_threshold_proposal_rejected_immediately_for_nonexistent_accounts(db_available, monkeypatch):
+    """Regression: threshold proposals with unknown account_ids must fail at submission,
+    not silently create a stuck proposal that can never be approved."""
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    _configure_threshold(monkeypatch, "100.0000")
+
+    with pytest.raises(InvariantError, match="unknown account_ids"):
+        record_transaction_bundle(
+            {
+                "source_system": "test",
+                "external_id": "threshold-bad-account-1",
+                "date": "2026-03-03T12:00:00Z",
+                "description": "mortgage payment",
+                "postings": [
+                    {"account_id": "exp_debtservice_mortgage", "amount": "3209.7000", "currency": "USD"},
+                    {"account_id": "ast_cash_citizens_checking_7819", "amount": "-3209.7000", "currency": "USD"},
+                ],
+                "correlation_id": "corr-bad-account-test",
+            }
+        )
+
+    with transaction() as conn:
+        proposal_count = conn.execute("SELECT COUNT(*) AS c FROM approval_proposals").fetchone()["c"]
+        tx_count = conn.execute("SELECT COUNT(*) AS c FROM ledger_transactions").fetchone()["c"]
+
+    assert proposal_count == 0, "no proposal should be created for unknown accounts"
+    assert tx_count == 0
 
 
 def test_serial_writes_commit_non_matches_and_propose_duplicates(db_available, monkeypatch):

@@ -1,0 +1,4 @@
+Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD),Purchased By
+10/12/2026,10/13/2026,"STREAMCO MONTHLY 1 MAIN ST","StreamCo","Entertainment","Purchase","9.99","Pat Example"
+10/18/2026,10/18/2026,"APPLE CASH PAYMENT","Apple Cash Payment","Payment","Payment","-800.00","Pat Example"
+10/19/2026,10/19/2026,"REFUND STREAMCO","StreamCo","Entertainment","Credit","-9.99","Pat Example"

@@ -1,0 +1,7 @@
+"Account Name : SHARE DRAFT"
+"Account Number : 00000FIXTURE"
+"Date Range : 10/01/2026-10/31/2026"
+Transaction Number,Date,Description,Memo,Amount Debit,Amount Credit,Balance,Check Number,Fees  
+"TX0001",10/05/2026,"DEPOSIT","PAYROLL FAKECO",,2000.00,"3000.00",,0.00
+"TX0002",10/06/2026,"W/D NORMAL","PURCHASE POS INITECH WATER UTILITY REF# 1",-166.00,,"2834.00",,0.00
+"TX0003",10/07/2026,"W/D NORMAL","PURCHASE POS NOVELTY SHOP",-12.34,,"2821.66",,0.00

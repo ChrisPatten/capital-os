@@ -49,6 +49,9 @@ python3 scripts/apply_migrations.py
 # Check migration reversibility (local CI gate reproduction)
 python scripts/check_migration_cycle.py --db-path /tmp/capital-os-migration-cycle.db
 
+# Offline bank-CSV -> obligation auto-match (dry-run by default; --apply fulfills; see docs/automatch.md)
+python3 scripts/match_obligation_payments.py --db-path data/capital_os.db --since 2026-09-01
+
 # Validate COA seed without applying
 python3 scripts/import_coa.py config/coa.yaml --validate-only
 ```

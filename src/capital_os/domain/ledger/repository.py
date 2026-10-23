@@ -221,7 +221,17 @@ def upsert_balance_snapshot(conn, payload: dict[str, Any]) -> tuple[str, str]:
     return snapshot_id, "recorded"
 
 
+_OBLIGATION_RECURRENCE_FIELDS = ("recurrence", "day_of_month", "funding_account_id", "bucket")
+_ROLLING_RECURRENCE_MONTHS = {"monthly": 1, "quarterly": 3, "annual": 12}
+
+
 def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
+    """Insert or update an obligation.
+
+    The recurrence fields (recurrence, day_of_month, funding_account_id, bucket) are
+    written on insert when non-None, and on update only when a non-None value is
+    supplied; omitting them (or passing None) leaves stored values unchanged.
+    """
     active_flag = 1 if payload.get("active", True) else 0
     existing = conn.execute(
         "SELECT obligation_id FROM obligations WHERE source_system=? AND name=? AND account_id=?",
@@ -229,10 +239,12 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
     ).fetchone()
     if existing:
         obligation_id = str(existing["obligation_id"])
+        extra_cols = [f for f in _OBLIGATION_RECURRENCE_FIELDS if payload.get(f) is not None]
+        extra_sql = "".join(f", {f}=?" for f in extra_cols)
         conn.execute(
-            """
+            f"""
             UPDATE obligations
-            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, entity_id=?, active=?, updated_at=CURRENT_TIMESTAMP
+            SET cadence=?, expected_amount=?, variability_flag=?, next_due_date=?, metadata=?, entity_id=?, active=?{extra_sql}, updated_at=CURRENT_TIMESTAMP
             WHERE obligation_id=?
             """,
             (
@@ -243,6 +255,7 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
                 json.dumps(payload.get("metadata", {}), separators=(",", ":")),
                 payload.get("entity_id", DEFAULT_ENTITY_ID),
                 active_flag,
+                *[payload[f] for f in extra_cols],
                 obligation_id,
             ),
         )
@@ -253,8 +266,9 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
         """
         INSERT INTO obligations (
             obligation_id, source_system, name, account_id, cadence, expected_amount,
-            variability_flag, next_due_date, metadata, active, entity_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            variability_flag, next_due_date, metadata, active, entity_id,
+            recurrence, day_of_month, funding_account_id, bucket
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             obligation_id,
@@ -268,29 +282,60 @@ def upsert_obligation(conn, payload: dict[str, Any]) -> tuple[str, str, bool]:
             json.dumps(payload.get("metadata", {}), separators=(",", ":")),
             active_flag,
             payload.get("entity_id", DEFAULT_ENTITY_ID),
+            payload.get("recurrence"),
+            payload.get("day_of_month"),
+            payload.get("funding_account_id"),
+            payload.get("bucket"),
         ),
     )
     return obligation_id, "created", bool(active_flag)
 
 
 def fulfill_obligation(conn, payload: dict[str, Any]) -> dict[str, Any]:
-    """Set active=0 on an obligation, recording fulfillment linkage."""
+    """Record fulfillment of an obligation.
+
+    One-time / legacy rows (recurrence NULL or ``one_time``): set active=0 and record the
+    fulfillment linkage; an inactive row returns ``already_fulfilled`` with no write.
+
+    Recurring rows (monthly, quarterly, annual, biweekly): the row stays active, the
+    fulfilled_* linkage is overwritten with this (latest) fulfillment, and next_due_date
+    rolls forward one cycle computed only from stored data (never the clock). The
+    response then also carries ``next_due_date``.
+
+    Replay guard: when ``expected_due_date`` is supplied and differs from the stored
+    next_due_date the call is a no-op ``already_fulfilled`` that returns the stored
+    fulfilled_* values (and the stored next_due_date for recurring rows). Without the
+    guard, repeating a call on a recurring row rolls it forward again.
+    """
     existing = conn.execute(
-        "SELECT obligation_id, active, fulfilled_by_transaction_id, fulfilled_at FROM obligations WHERE obligation_id=?",
+        """
+        SELECT obligation_id, active, fulfilled_by_transaction_id, fulfilled_at,
+               next_due_date, recurrence, day_of_month
+        FROM obligations WHERE obligation_id=?
+        """,
         (payload["obligation_id"],),
     ).fetchone()
     if not existing:
         raise ValueError(f"obligation not found: {payload['obligation_id']}")
 
-    if not existing["active"]:
-        return {
+    recurrence = existing["recurrence"]
+    rolling = recurrence in _ROLLING_RECURRENCE_MONTHS or recurrence == "biweekly"
+    current_due = str(existing["next_due_date"])
+    expected_due = payload.get("expected_due_date")
+
+    guard_mismatch = expected_due is not None and str(expected_due) != current_due
+    if not existing["active"] or guard_mismatch:
+        result = {
             "status": "already_fulfilled",
             "obligation_id": str(existing["obligation_id"]),
             "fulfilled_by_transaction_id": existing["fulfilled_by_transaction_id"],
             "fulfilled_at": existing["fulfilled_at"],
         }
+        if rolling:
+            result["next_due_date"] = current_due
+        return result
 
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
     fulfilled_at = payload.get("fulfilled_at")
     if fulfilled_at is None:
         fulfilled_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
@@ -298,6 +343,32 @@ def fulfill_obligation(conn, payload: dict[str, Any]) -> dict[str, Any]:
         fulfilled_at = fulfilled_at.isoformat(timespec="microseconds")
 
     fulfilled_by_transaction_id = payload.get("fulfilled_by_transaction_id")
+
+    if rolling:
+        from datetime import date as _date
+
+        from capital_os.domain.dates import add_months
+
+        current = _date.fromisoformat(current_due)
+        if recurrence == "biweekly":
+            new_due = current + timedelta(days=14)
+        else:
+            new_due = add_months(current, _ROLLING_RECURRENCE_MONTHS[recurrence], day=existing["day_of_month"])
+        conn.execute(
+            """
+            UPDATE obligations
+            SET next_due_date=?, fulfilled_by_transaction_id=?, fulfilled_at=?, updated_at=CURRENT_TIMESTAMP
+            WHERE obligation_id=?
+            """,
+            (new_due.isoformat(), fulfilled_by_transaction_id, fulfilled_at, str(existing["obligation_id"])),
+        )
+        return {
+            "status": "fulfilled",
+            "obligation_id": str(existing["obligation_id"]),
+            "fulfilled_by_transaction_id": fulfilled_by_transaction_id,
+            "fulfilled_at": fulfilled_at,
+            "next_due_date": new_due.isoformat(),
+        }
 
     conn.execute(
         """
@@ -826,6 +897,10 @@ def list_obligations_page(
           metadata,
           active,
           entity_id,
+          recurrence,
+          day_of_month,
+          funding_account_id,
+          bucket,
           created_at,
           updated_at
         FROM obligations
@@ -850,6 +925,10 @@ def list_obligations_page(
                 "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
                 "active": bool(row["active"]),
                 "entity_id": row["entity_id"],
+                "recurrence": row["recurrence"],
+                "day_of_month": row["day_of_month"],
+                "funding_account_id": row["funding_account_id"],
+                "bucket": row["bucket"],
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
             }

@@ -36,6 +36,10 @@ from capital_os.schemas.tools import (  # noqa: E402
     GetTransactionByExternalIdIn,
     ListAccountsIn,
     ListObligationsIn,
+    ListBudgetItemsIn,
+    GetBudgetSummaryIn,
+    ForecastCashIn,
+    UpsertBudgetItemIn,
     ListProposalsIn,
     ListTransactionsIn,
     LockPeriodIn,
@@ -46,6 +50,7 @@ from capital_os.schemas.tools import (  # noqa: E402
     RejectProposedTransactionIn,
     SimulateSpendIn,
     UpdateAccountMetadataIn,
+    UpdateAccountProfileIn,
 )
 
 # ---------------------------------------------------------------------------
@@ -54,6 +59,7 @@ from capital_os.schemas.tools import (  # noqa: E402
 _TOOL_REGISTRY: list[tuple[str, type, str]] = [
     ("create_account", CreateAccountIn, "Create a new account in the chart of accounts"),
     ("update_account_metadata", UpdateAccountMetadataIn, "Update metadata on an existing account"),
+    ("update_account_profile", UpdateAccountProfileIn, "Update an account display name and institution profile fields (idempotent)"),
     ("list_accounts", ListAccountsIn, "List accounts with cursor-based pagination"),
     ("get_account_tree", GetAccountTreeIn, "Retrieve the account hierarchy as a tree"),
     ("get_account_balances", GetAccountBalancesIn, "Get balances for all accounts as of a given date"),
@@ -65,6 +71,10 @@ _TOOL_REGISTRY: list[tuple[str, type, str]] = [
     ("create_or_update_obligation", CreateOrUpdateObligationIn, "Create or update a recurring financial obligation"),
     ("fulfill_obligation", FulfillObligationIn, "Mark an obligation as fulfilled (deactivate) and optionally link the payment transaction"),
     ("list_obligations", ListObligationsIn, "List obligations with cursor-based pagination"),
+    ("upsert_budget_item", UpsertBudgetItemIn, "Create, version or deactivate a budget item keyed by item_key"),
+    ("list_budget_items", ListBudgetItemsIn, "List budget items with cursor-based pagination and filters"),
+    ("get_budget_summary", GetBudgetSummaryIn, "Monthly budget summary by bucket, take-home percentages and per-account net"),
+    ("forecast_cash", ForecastCashIn, "Deterministic cash forecast for an account: dated events, running balance, monthly and overall minimums"),
     ("list_proposals", ListProposalsIn, "List approval proposals with optional status filter"),
     ("get_proposal", GetProposalIn, "Retrieve full details of a specific approval proposal"),
     ("approve_proposed_transaction", ApproveProposedTransactionIn, "Approve a pending transaction proposal"),

@@ -38,13 +38,16 @@ from capital_os.tools import (
     compute_consolidated_posture,
     create_account,
     create_or_update_obligation,
+    forecast_cash,
     fulfill_obligation,
     get_account_balances,
     get_account_tree,
+    get_budget_summary,
     get_config,
     get_proposal,
     get_transaction_by_external_id,
     list_accounts,
+    list_budget_items,
     list_obligations,
     list_proposals,
     list_transactions,
@@ -57,6 +60,7 @@ from capital_os.tools import (
     simulate_spend,
     update_account_metadata,
     update_account_profile,
+    upsert_budget_item,
 )
 
 CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -69,6 +73,7 @@ WRITE_TOOLS = {
     "record_balance_snapshot",
     "create_or_update_obligation",
     "fulfill_obligation",
+    "upsert_budget_item",
     "approve_proposed_transaction",
     "reject_proposed_transaction",
     "propose_config_change",
@@ -105,6 +110,10 @@ TOOL_HANDLERS = {
     "update_account_profile": update_account_profile.handle,
     "close_period": close_period.handle,
     "lock_period": lock_period.handle,
+    "upsert_budget_item": upsert_budget_item.handle,
+    "list_budget_items": list_budget_items.handle,
+    "get_budget_summary": get_budget_summary.handle,
+    "forecast_cash": forecast_cash.handle,
 }
 
 

@@ -2,7 +2,7 @@
 
 Last updated: 2026-02-18
 
-Capital OS now provides a containerized **Model Context Protocol (MCP)** server that exposes all 25 financial tools via stdio JSON-RPC. This enables seamless integration with Claude Code, Claude Desktop, and other MCP clients.
+Capital OS now provides a containerized **Model Context Protocol (MCP)** server that exposes all 31 financial tools via stdio JSON-RPC. This enables seamless integration with Claude Code, Claude Desktop, and other MCP clients.
 
 ## Overview
 
@@ -18,7 +18,7 @@ SQLite Database (mounted volume)
 ```
 
 **Key features:**
-- All 25 Capital OS tools exposed as MCP tools with full schema
+- All 31 Capital OS tools exposed as MCP tools with full schema
 - Automatic `correlation_id` injection (UUID per call)
 - Clean stdio (logs → stderr, JSON-RPC → stdout)
 - Persistent data via Docker volume mounting
@@ -143,11 +143,12 @@ The container **skips initialization** if the database already exists, preservin
 
 ## Tools Reference
 
-All 25 Capital OS tools are exposed as MCP tools. Each tool maps directly to the HTTP API:
+All 31 Capital OS tools are exposed as MCP tools. Each tool maps directly to the HTTP API:
 
 ### Account Management
 - `create_account` — Create account
 - `update_account_metadata` — Update account metadata
+- `update_account_profile` — Update display name / institution profile
 - `list_accounts` — List accounts (paginated)
 - `get_account_tree` — Get account hierarchy
 - `get_account_balances` — Get all account balances
@@ -161,7 +162,14 @@ All 25 Capital OS tools are exposed as MCP tools. Each tool maps directly to the
 - `record_balance_snapshot` — Record external balance snapshot
 - `reconcile_account` — Reconcile ledger vs snapshot
 - `create_or_update_obligation` — Create/update recurring obligation
+- `fulfill_obligation` — Mark an obligation paid (rolls recurring ones forward)
 - `list_obligations` — List obligations (paginated)
+
+### Budget & Forecast
+- `upsert_budget_item` — Create/version/deactivate a budget item
+- `list_budget_items` — List budget items (paginated)
+- `get_budget_summary` — Monthly budget summary by bucket
+- `forecast_cash` — Deterministic cash forecast for an account
 
 ### Capital Analysis
 - `compute_capital_posture` — Compute entity posture + risk band
@@ -297,7 +305,7 @@ docker-compose.yml   # Dev helper
 ### MCP Server (`mcp/server.py`)
 
 **Key responsibilities:**
-1. **Tool registration** — Imports all 25 Pydantic `*In` models from `capital_os.schemas.tools`
+1. **Tool registration** — Imports all 31 Pydantic `*In` models from `capital_os.schemas.tools`
 2. **Schema generation** — Calls `model_json_schema()` and strips `correlation_id` field
 3. **Tool discovery** — Responds to `tools/list` with full schemas
 4. **Tool dispatch** — Routes `tools/call` to backend HTTP API
@@ -311,7 +319,7 @@ Client → tools/list request
   ↓
 server.py reads TOOLS registry
   ↓
-Returns 25 tools + schemas (correlation_id stripped)
+Returns 31 tools + schemas (correlation_id stripped)
   ↓
 Client → tools/call {name: "list_accounts", arguments: {...}}
   ↓
@@ -348,7 +356,7 @@ Response JSON → client
 - [x] Container initializes DB
 - [x] uvicorn starts and is healthy
 - [x] MCP server accepts connections
-- [x] All 25 tools available via `tools/list`
+- [x] All 31 tools available via `tools/list`
 - [x] Tool calls work end-to-end
 - [x] Logs separated (stdout clean, stderr logged)
 - [x] Volume mounting preserves data

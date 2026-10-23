@@ -28,6 +28,10 @@ DEFAULT_TOOL_CAPABILITIES = {
     "record_balance_snapshot": "tools:write",
     "create_or_update_obligation": "tools:write",
     "fulfill_obligation": "tools:write",
+    "upsert_budget_item": "tools:write",
+    "list_budget_items": "tools:read",
+    "get_budget_summary": "tools:read",
+    "forecast_cash": "tools:read",
     "compute_capital_posture": "tools:read",
     "compute_consolidated_posture": "tools:read",
     "simulate_spend": "tools:read",
@@ -61,6 +65,22 @@ def _normalize_balance_source_policy(raw_value: str) -> str:
     return value
 
 
+_TRUE_VALUES = {"true", "1", "yes"}
+_FALSE_VALUES = {"false", "0", "no"}
+
+
+def _parse_bool_env(env_name: str, default: bool) -> bool:
+    raw = os.getenv(env_name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in _TRUE_VALUES:
+        return True
+    if value in _FALSE_VALUES:
+        return False
+    raise ValueError(f"{env_name} must be one of true|false|1|0|yes|no")
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str
@@ -70,6 +90,7 @@ class Settings:
     balance_source_policy: str = "best_available"
     token_identities: dict[str, dict[str, object]] | None = None
     tool_capabilities: dict[str, str] | None = None
+    approvals_enabled: bool = True
 
 
 def _parse_json_mapping(raw_value: str, *, env_name: str) -> dict:
@@ -136,4 +157,5 @@ def get_settings() -> Settings:
         balance_source_policy=balance_source_policy,
         token_identities=_load_token_identities(),
         tool_capabilities=_load_tool_capabilities(),
+        approvals_enabled=_parse_bool_env("CAPITAL_OS_APPROVALS_ENABLED", True),
     )

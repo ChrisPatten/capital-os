@@ -22,7 +22,7 @@ capital-os = "capital_os.cli.main:app"
 
 [project.optional-dependencies]
 mcp = [
-  "mcp>=1.0",
+  "mcp>=1.0,<2",
   "httpx>=0.28.0",
 ]
 dev = [

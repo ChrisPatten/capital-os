@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger with schema-validated tool APIs for agent use. Currently in Phase 1 (Ledger Core Foundation).
+Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger with schema-validated tool APIs for agent use. Currently in Phase 1 (Ledger Core Foundation), slimmed in Oct 2026 (`docs/slimming-plan-2026-10.md`).
+
+**Stance (Oct 2026):** the ledger is frozen history plus manual entries (`record_transaction_bundle` still works). Bulk imports are discontinued, and approvals are disabled in production via `CAPITAL_OS_APPROVALS_ENABLED=false` (duplicate-match proposals remain as a safety net). Day-to-day use is balance snapshots, obligations (including recurring ones with a funding account), a budget (`budget_items`), and `forecast_cash`. Plaid and the transaction inbox are parked on branches (not in this tree); periods, policy rules and approvals are dormant but intact.
+
+**Daily-use tools:** `record_balance_snapshot`, `get_account_balances`, `create_or_update_obligation`, `list_obligations` (`active_only=false` is the archive view), `fulfill_obligation`, `upsert_budget_item`, `list_budget_items`, `get_budget_summary`, `forecast_cash`, plus `record_transaction_bundle` for manual entries. 31 tools are registered in total (`TOOL_HANDLERS` in `src/capital_os/runtime/execute_tool.py`).
 
 **Tech stack:** Python 3.11+, FastAPI, SQLite (WAL mode), Pytest.
 
@@ -48,6 +52,9 @@ python3 scripts/apply_migrations.py
 
 # Check migration reversibility (local CI gate reproduction)
 python scripts/check_migration_cycle.py --db-path /tmp/capital-os-migration-cycle.db
+
+# Offline bank-CSV -> obligation auto-match (dry-run by default; --apply fulfills; see docs/automatch.md)
+python3 scripts/match_obligation_payments.py --db-path data/capital_os.db --since 2026-09-01
 
 # Validate COA seed without applying
 python3 scripts/import_coa.py config/coa.yaml --validate-only
@@ -102,6 +109,9 @@ src/capital_os/
     policy/              # Policy rules
     reconciliation/      # Account reconciliation
     query/               # Read query surface
+    budget/              # Budget items (versioned) and monthly summary
+    forecast/            # Deterministic cash forecast (forecast_cash)
+    dates.py             # Month-end-safe date math, business-day helper
   db/session.py          # SQLite connection, transaction boundary helper
   observability/         # Event log + deterministic input/output hashing
   schemas/               # Pydantic request/response contracts
@@ -109,11 +119,13 @@ src/capital_os/
   config.py              # Typed env-driven settings
 
 mcp/                      # MCP (Model Context Protocol) server
-  server.py               # JSON-RPC 2.0 handler: exposes all 25 tools to Claude Code/Desktop
+  server.py               # JSON-RPC 2.0 handler: exposes all 31 tools to Claude Code/Desktop
   entrypoint.sh           # Container init: DB setup, backend start, MCP server exec
 ```
 
-**MCP Integration:** All 25 tools are exposed via `mcp/server.py` which runs in a Docker container. The MCP server proxies JSON-RPC 2.0 calls to the FastAPI backend on stdio. See `docs/docker-mcp-integration.md` for full documentation.
+**MCP Integration:** All 31 tools are exposed via `mcp/server.py` which runs in a Docker container. The MCP server proxies JSON-RPC 2.0 calls to the FastAPI backend on stdio. See `docs/docker-mcp-integration.md` for full documentation. `tests/unit/test_mcp_registry_complete.py` keeps the MCP registry in sync with `TOOL_HANDLERS`. The `mcp` extra is pinned `<2` because mcp 2.x removed the decorator API `mcp/server.py` uses.
+
+**Parked on branches (not in this tree):** the Plaid ingestion plugin and the transaction inbox (migrations 0011/0012). Their empty tables exist only on the live DB.
 
 ## Non-Negotiable Invariants
 
@@ -140,7 +152,7 @@ Each tool maps to a required capability (e.g., `record_transaction_bundle` requi
 ## Database & Migrations
 
 - SQLite file at `data/capital_os.db` (configurable via `CAPITAL_OS_DB_URL`).
-- Numbered SQL migrations in `migrations/` (0001–0008), each with a `.rollback.sql` counterpart.
+- Numbered SQL migrations in `migrations/` (0001–0010 and 0013–0014 on this branch; 0011/0012 are reserved for the parked inbox/Plaid branches and already applied on the live DB), each with a `.rollback.sql` counterpart.
 - Migrations must be reversible and tested via `scripts/check_migration_cycle.py`.
 - Tests use function-scoped DB reset (delete + re-migrate) for deterministic isolation.
 
@@ -190,6 +202,7 @@ When instructions conflict, follow this order:
 | `CAPITAL_OS_AUTH_TOKEN` | `dev-admin-token` | Auth token for API calls |
 | `CAPITAL_OS_BALANCE_SOURCE_POLICY` | `best_available` | `ledger_only`, `snapshot_only`, or `best_available` |
 | `CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT` | `1000.0000` | Threshold for approval workflow |
+| `CAPITAL_OS_APPROVALS_ENABLED` | `true` | When false, threshold/policy approvals are skipped (ledger frozen; manual entries commit directly). Duplicate-match proposals still apply. |
 | `CAPITAL_OS_AUTH_TOKENS_JSON` | (built-in dev tokens) | JSON override for token->identity map |
 | `CAPITAL_OS_TOOL_CAPABILITIES_JSON` | (built-in defaults) | JSON override for tool->capability map |
 | `CAPITAL_OS_IDLE_SECONDS` | `300` | Idle auto-shutdown for `make serve-idle` |

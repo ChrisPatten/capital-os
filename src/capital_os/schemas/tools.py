@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as _dt
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
@@ -232,6 +233,10 @@ class RecordBalanceSnapshotOut(BaseModel):
     output_hash: str
 
 
+ObligationRecurrence = Literal["monthly", "biweekly", "quarterly", "annual", "one_time"]
+ObligationBucket = Literal["recurring", "debt", "discretionary", "savings", "annual"]
+
+
 class CreateOrUpdateObligationIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +250,10 @@ class CreateOrUpdateObligationIn(BaseModel):
     metadata: dict = Field(default_factory=dict)
     active: bool = True
     entity_id: str = DEFAULT_ENTITY_ID
+    recurrence: ObligationRecurrence | None = None
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
+    funding_account_id: str | None = None
+    bucket: ObligationBucket | None = None
     correlation_id: str
 
 
@@ -262,6 +271,7 @@ class FulfillObligationIn(BaseModel):
     obligation_id: str
     fulfilled_by_transaction_id: str | None = None
     fulfilled_at: datetime | None = None
+    expected_due_date: date | None = None
     correlation_id: str
 
 
@@ -270,6 +280,7 @@ class FulfillObligationOut(BaseModel):
     obligation_id: str
     fulfilled_by_transaction_id: str | None
     fulfilled_at: str | None
+    next_due_date: date | None = None
     correlation_id: str
     output_hash: str
 
@@ -817,6 +828,10 @@ class ObligationListItem(BaseModel):
     metadata: dict = Field(default_factory=dict)
     active: bool
     entity_id: str
+    recurrence: ObligationRecurrence | None = None
+    day_of_month: int | None = None
+    funding_account_id: str | None = None
+    bucket: ObligationBucket | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -1130,3 +1145,216 @@ class UpdateAccountProfileOut(BaseModel):
 
 
 TreeAccountNode.model_rebuild()
+
+
+BudgetDirection = Literal["inflow", "outflow"]
+BudgetCadence = Literal["monthly", "biweekly", "quarterly", "annual"]
+BudgetBucket = Literal["recurring", "debt", "discretionary", "savings", "annual"]
+
+
+class UpsertBudgetItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_key: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    direction: BudgetDirection
+    amount: Decimal = Field(ge=0)
+    cadence: BudgetCadence
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
+    anchor_date: date | None = None
+    account_id: str | None = None
+    bucket: BudgetBucket | None = None
+    effective_date: date
+    source: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    entity_id: str = DEFAULT_ENTITY_ID
+    active: bool = True
+    correlation_id: str
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> "UpsertBudgetItemIn":
+        if self.direction == "outflow" and self.bucket is None:
+            raise ValueError("bucket is required for outflow budget items")
+        if self.direction == "inflow" and self.bucket is not None:
+            raise ValueError("bucket must be omitted for inflow budget items")
+        if self.cadence == "monthly" and self.day_of_month is None:
+            raise ValueError("day_of_month is required for monthly budget items")
+        if self.cadence in ("biweekly", "quarterly", "annual") and self.anchor_date is None:
+            raise ValueError("anchor_date is required for biweekly, quarterly and annual budget items")
+        return self
+
+
+class UpsertBudgetItemOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["created", "versioned", "unchanged", "deactivated"]
+    item_id: str
+    item_key: str
+    active: bool
+    correlation_id: str
+    output_hash: str
+
+
+class ListBudgetItemsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    active_only: bool = True
+    direction: BudgetDirection | None = None
+    bucket: BudgetBucket | None = None
+    account_id: str | None = None
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor_payload(value, required_keys=("item_key", "effective_date", "item_id"))
+        return value
+
+
+class BudgetItemRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    item_key: str
+    name: str
+    direction: BudgetDirection
+    amount: Decimal
+    cadence: BudgetCadence
+    day_of_month: int | None = None
+    anchor_date: date | None = None
+    account_id: str | None = None
+    bucket: BudgetBucket | None = None
+    active: bool
+    effective_date: date
+    source: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    entity_id: str
+
+
+class ListBudgetItemsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[BudgetItemRow]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class GetBudgetSummaryIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str | None = None
+    as_of_date: date | None = None
+    correlation_id: str
+
+
+class BudgetSummaryBucket(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    bucket: BudgetBucket
+    monthly_amount: Decimal
+    pct_of_take_home: Decimal
+
+
+class BudgetSummaryAccount(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    inflow_monthly: Decimal
+    outflow_monthly: Decimal
+    net_monthly: Decimal
+
+
+class GetBudgetSummaryOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    take_home_monthly: Decimal
+    untracked_inflows_monthly: Decimal
+    buckets: list[BudgetSummaryBucket]
+    total_outflows_monthly: Decimal
+    leftover_monthly: Decimal
+    accounts: list[BudgetSummaryAccount]
+    item_count: int
+    correlation_id: str
+    output_hash: str
+
+
+class ForecastCashIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str = Field(min_length=1)
+    as_of_date: date
+    days: int = Field(ge=1, le=730)
+    starting_balance: Decimal | None = None
+    include_unposted: bool = False
+    threshold: Decimal | None = None
+    entity_id: str = DEFAULT_ENTITY_ID
+    correlation_id: str
+
+
+class ForecastStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: _dt.date
+    balance: Decimal
+    source: Literal["explicit", "snapshot"]
+    snapshot_date: _dt.date | None = None
+
+
+class ForecastEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: _dt.date
+    name: str
+    kind: Literal["budget_item", "obligation"]
+    source_id: str
+    direction: BudgetDirection
+    amount: Decimal
+    balance_after: Decimal
+
+
+class ForecastMonthlyMinimum(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    month: str
+    min_balance: Decimal
+    date: _dt.date | None = None
+    item: str | None = None
+
+
+class ForecastOverallMinimum(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    balance: Decimal
+    date: _dt.date | None = None
+    item: str | None = None
+
+
+class ForecastUnscheduledItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_id: str
+    name: str
+    reason: str
+
+
+class ForecastCashOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    as_of_date: _dt.date
+    end_date: _dt.date
+    start: ForecastStart
+    unposted_events: list[ForecastEvent] | None = None
+    events: list[ForecastEvent]
+    monthly_minimums: list[ForecastMonthlyMinimum]
+    overall_minimum: ForecastOverallMinimum
+    threshold: Decimal | None = None
+    below_threshold: bool | None = None
+    unscheduled_items: list[ForecastUnscheduledItem]
+    correlation_id: str
+    output_hash: str

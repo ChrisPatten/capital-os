@@ -1,0 +1,6 @@
+﻿"Transaction Type","Date","Account Type","Description","Amount","Reference No.","Credits","Debits"
+DEBIT,10/19/26,Checking,"ZEBRALOAN SERVICING",-250.00,"",,$250.00
+DIRECT DEPOSIT,10/15/26,Checking,"FAKECO PAYROLL",2000.00,"",$2000.00,
+DEBIT,10/3/26,Checking,"Acme Power web_pay","-1,100.50","",,"$1,100.50"
+DEBIT,10/4/26,Checking,"GLOBEX GYM",-30.00,"",,$30.00
+DEBIT,10/6/26,Checking,"GLOBEX CLUB",-30.00,"",,$30.00

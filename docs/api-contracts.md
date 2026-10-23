@@ -34,13 +34,16 @@
 - `compute_consolidated_posture`
 - `create_account`
 - `create_or_update_obligation`
+- `forecast_cash`
 - `fulfill_obligation`
 - `get_account_balances`
 - `get_account_tree`
+- `get_budget_summary`
 - `get_config`
 - `get_proposal`
 - `get_transaction_by_external_id`
 - `list_accounts`
+- `list_budget_items`
 - `list_obligations`
 - `list_proposals`
 - `list_transactions`
@@ -53,6 +56,7 @@
 - `simulate_spend`
 - `update_account_metadata`
 - `update_account_profile`
+- `upsert_budget_item`
 
 ## Contract Families (Pydantic Schemas)
 
@@ -65,6 +69,18 @@ Examples:
 - `CreateOrUpdateObligationIn` → `CreateOrUpdateObligationOut`
 - `ListTransactionsIn` → `ListTransactionsOut`
 - `GetTransactionByExternalIdIn` → `GetTransactionByExternalIdOut`
+- `UpsertBudgetItemIn` → `UpsertBudgetItemOut` (write, `tools:write`)
+- `ListBudgetItemsIn` → `ListBudgetItemsOut` (read)
+- `GetBudgetSummaryIn` → `GetBudgetSummaryOut` (read)
+- `ForecastCashIn` → `ForecastCashOut` (read; `as_of_date` required, no wall clock)
+
+### Changed obligation contracts (Oct 2026)
+
+- `CreateOrUpdateObligationIn` gains optional `recurrence`, `day_of_month`, `funding_account_id`, `bucket`. Omitted/null fields are excluded from the hashed payload, so legacy payloads keep their `input_hash`.
+- `FulfillObligationIn` gains optional `expected_due_date` (replay guard). `FulfillObligationOut` includes `next_due_date` for recurring rows only.
+- `ListObligationsOut` items carry `recurrence`, `day_of_month`, `funding_account_id`, `bucket` (omitted when null). `active_only` defaults to true; `active_only=false` returns the archive.
+
+Field-level behavior is in [tool-reference.md](tool-reference.md).
 
 ## Security and Determinism Headers/Fields
 

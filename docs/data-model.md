@@ -1,6 +1,6 @@
 # Data Model Reference
 
-As of 2026-02-16. Source migrations:
+As of 2026-10-23. Source migrations (0011/0012 are reserved, see the note under `obligations`):
 - `migrations/0001_ledger_core.sql`
 - `migrations/0002_security_and_append_only.sql`
 - `migrations/0003_approval_gates.sql`
@@ -9,6 +9,10 @@ As of 2026-02-16. Source migrations:
 - `migrations/0006_periods_policies.sql`
 - `migrations/0007_query_surface_indexes.sql`
 - `migrations/0008_api_security_runtime_controls.sql`
+- `migrations/0009_obligation_fulfillment.sql`
+- `migrations/0010_account_identifier_history.sql`
+- `migrations/0013_obligation_recurrence.sql`
+- `migrations/0014_budget_items.sql`
 
 ## Canonical Tables
 
@@ -101,6 +105,24 @@ Constraints:
 - Unique `(account_id, snapshot_date)`.
 - Supports upsert semantics in repository/service layer.
 
+## `budget_items`
+Purpose:
+- Budget as data (migration 0014): inflows (payroll, deposits) and outflows (bills, debt paydown, savings) used by `get_budget_summary`.
+
+Key fields:
+- `item_id TEXT PRIMARY KEY`; `item_key TEXT NOT NULL` (stable identity across versions)
+- `name`, `direction CHECK IN ('inflow','outflow')`, `amount NUMERIC CHECK >= 0` (per occurrence)
+- `cadence CHECK IN ('monthly','biweekly','quarterly','annual')`, `day_of_month` (1-31), `anchor_date`
+- `account_id TEXT NULL REFERENCES accounts` (funding account for outflows, destination for inflows; NULL = untracked)
+- `bucket NULL CHECK IN ('recurring','debt','discretionary','savings','annual')`; table CHECK: required for outflow, NULL for inflow
+- `active`, `effective_date`, `source`, `metadata`, `entity_id`, `created_at`, `updated_at`
+
+Constraints and versioning:
+- Partial unique index on `(item_key) WHERE active = 1`: one active version per key.
+- A change inserts a new row and deactivates the previous one in the same transaction; history stays queryable.
+- Trigger `budget_items_versioned_update_guard` rejects any UPDATE other than `active` 1 -> 0 (and `updated_at`); reactivation is rejected. A second trigger rejects DELETE.
+- Monthly equivalents: monthly x1, biweekly x26/12, quarterly /3, annual /12 (Decimal; quantized to 4dp half-even only at output).
+
 ## `obligations`
 Purpose:
 - Recurring or custom expected obligations used for planning context.
@@ -117,10 +139,22 @@ Key fields:
 - `metadata TEXT NOT NULL DEFAULT '{}'`
 - `active INTEGER NOT NULL DEFAULT 1`
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `fulfilled_by_transaction_id TEXT`, `fulfilled_at TEXT` (migration 0009)
+- `recurrence TEXT NULL CHECK IN ('monthly','biweekly','quarterly','annual','one_time')` (migration 0013)
+- `day_of_month INTEGER NULL CHECK BETWEEN 1 AND 31` (0013)
+- `funding_account_id TEXT NULL` (0013; deliberately no FK clause because SQLite `DROP COLUMN` rejects FK columns, existence is validated in the service layer)
+- `bucket TEXT NULL CHECK IN ('recurring','debt','discretionary','savings','annual')` (0013)
 
 Constraints:
 - Unique `(source_system, name, account_id)`.
 - Service layer update path reactivates records by setting `active = 1`.
+
+`recurrence` vs legacy `cadence`:
+- `cadence` is the original three-value label and is NOT a reliable recurrence signal (many one-off bills were tagged `monthly`). It is unchanged and still required.
+- `recurrence` is a new opt-in column. NULL or `one_time` means legacy behavior: `fulfill_obligation` deactivates the row. `monthly`, `quarterly`, `annual` and `biweekly` make `fulfill_obligation` roll `next_due_date` forward and keep the row active.
+- All four new columns are NULL for existing rows. Migration 0013 rollback drops them.
+
+Migration numbering note: migrations 0011 and 0012 are reserved for the parked inbox and Plaid branches and are already applied on the live database; 0013 is the next number on this branch.
 
 ## `event_log`
 Purpose:

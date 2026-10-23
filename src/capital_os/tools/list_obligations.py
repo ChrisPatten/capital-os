@@ -9,14 +9,23 @@ from capital_os.observability.hashing import payload_hash
 from capital_os.schemas.tools import ListObligationsIn, ListObligationsOut
 
 
+_NEW_KEYS = ("recurrence", "day_of_month", "funding_account_id", "bucket")
+
+
 def handle(payload: dict) -> ListObligationsOut:
     started = perf_counter()
     req = ListObligationsIn.model_validate(payload)
     input_hash = payload_hash(req.model_dump(mode="json"))
 
     page = query_obligations_page(limit=req.limit, cursor=req.cursor, active_only=req.active_only)
+    # Omit null recurrence fields from the hashed payload so rows that predate migration 0013
+    # keep the exact output_hash they had before the columns existed.
+    obligations = [
+        {k: v for k, v in row.items() if not (k in _NEW_KEYS and v is None)}
+        for row in page["obligations"]
+    ]
     response_payload = {
-        "obligations": page["obligations"],
+        "obligations": obligations,
         "next_cursor": page["next_cursor"],
         "correlation_id": req.correlation_id,
     }

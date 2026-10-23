@@ -9,6 +9,10 @@ Primary context sources:
 - `_bmad-output/implementation-artifacts/tech-spec-ledger-core-foundation-phase-1-slice.md`
 
 ## Current Status
+- Oct 2026 stance (`docs/slimming-plan-2026-10.md`): the ledger is frozen history plus manual entries (`record_transaction_bundle` still works); imports are discontinued; approvals are disabled in production via `CAPITAL_OS_APPROVALS_ENABLED=false`. Plaid and the inbox are parked on branches; periods, policy and approvals are dormant.
+- Daily-use surface: balance snapshots, obligations (recurring fields, `fulfill_obligation` rolls them forward), `upsert_budget_item` / `list_budget_items` / `get_budget_summary`, `forecast_cash`. 31 tools are registered (`TOOL_HANDLERS`), all exposed via `mcp/server.py`.
+- Migrations on this branch: 0001-0010 and 0013-0014 (0011/0012 reserved for parked branches, already applied on the live DB).
+- Historical note below (greenfield wording) describes the original Phase 1 slice.
 - Product code is greenfield.
 - Existing repository content is primarily BMAD workflow/configuration artifacts plus planning docs.
 - Build the Phase 1 service and tests from scratch following the constraints below.

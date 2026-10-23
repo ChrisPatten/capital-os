@@ -336,3 +336,139 @@ def test_duplicate_risk_proposal_output_hash_reproducible_on_replay(db_available
     assert first["output_hash"] == second["output_hash"]
     assert first["proposed_transaction"] == second["proposed_transaction"]
     assert first["matched_transactions"] == second["matched_transactions"]
+
+
+def test_recurring_obligation_fulfill_and_list_hashes_reproducible(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from datetime import date
+
+    from capital_os.domain.ledger.service import create_or_update_obligation, fulfill_obligation
+    from capital_os.tools.list_obligations import handle as list_obligations_tool
+
+    with transaction() as conn:
+        account_id = create_account(conn, {"code": "2399", "name": "Replay Obligation", "account_type": "liability"})
+    created = create_or_update_obligation(
+        {
+            "source_system": "pytest",
+            "name": "Replay Mortgage",
+            "account_id": account_id,
+            "cadence": "monthly",
+            "expected_amount": Decimal("3127.4600"),
+            "variability_flag": False,
+            "next_due_date": date(2026, 11, 3),
+            "metadata": {},
+            "active": True,
+            "entity_id": "entity-default",
+            "recurrence": "monthly",
+            "day_of_month": 3,
+            "funding_account_id": account_id,
+            "bucket": "recurring",
+            "correlation_id": "replay-create",
+        }
+    )
+    fulfill_payload = {
+        "obligation_id": created["obligation_id"],
+        "fulfilled_by_transaction_id": "txn-1",
+        "fulfilled_at": "2026-11-03T00:00:00.000000+00:00",
+        "expected_due_date": date(2026, 11, 3),
+        "correlation_id": "replay-fulfill",
+    }
+    first = fulfill_obligation(dict(fulfill_payload))
+    assert first["status"] == "fulfilled"
+    assert first["next_due_date"] == "2026-12-03"
+
+    # Replaying with the guard is a no-op with a reproducible output_hash.
+    replay_a = fulfill_obligation(dict(fulfill_payload))
+    replay_b = fulfill_obligation(dict(fulfill_payload))
+    assert replay_a["status"] == "already_fulfilled"
+    assert replay_a["output_hash"] == replay_b["output_hash"]
+
+    list_a = list_obligations_tool({"correlation_id": "replay-list"}).model_dump(mode="json")
+    list_b = list_obligations_tool({"correlation_id": "replay-list"}).model_dump(mode="json")
+    assert list_a["obligations"][0]["recurrence"] == "monthly"
+    assert list_a["obligations"][0]["next_due_date"] == "2026-12-03"
+    assert list_a["output_hash"] == list_b["output_hash"]
+
+
+def test_budget_summary_and_list_hashes_reproducible_and_order_independent(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    import random
+
+    from capital_os.domain.budget.service import (
+        get_budget_summary,
+        list_budget_items,
+        upsert_budget_item,
+    )
+    from tests.support.budget_seed import create_budget_accounts, reference_items
+
+    acct = create_budget_accounts()
+    items = reference_items(acct)
+    shuffled = list(items)
+    random.Random(7).shuffle(shuffled)
+    for i, item in enumerate(shuffled):
+        upsert_budget_item({**item, "entity_id": "entity-default", "correlation_id": f"replay-seed-{i}"})
+
+    summary_a = get_budget_summary({"correlation_id": "replay-sum"})
+    summary_b = get_budget_summary({"correlation_id": "replay-sum"})
+    assert summary_a == summary_b
+    assert summary_a["output_hash"] == summary_b["output_hash"]
+
+    list_a = list_budget_items({"correlation_id": "replay-list", "limit": 500})
+    list_b = list_budget_items({"correlation_id": "replay-list", "limit": 500})
+    assert list_a["output_hash"] == list_b["output_hash"]
+    assert [i["item_key"] for i in list_a["items"]] == sorted(i["item_key"] for i in items)
+
+    # Seed the same budget into a second entity in a different order and with different
+    # item_keys/item_ids: per-entity summaries must hash identically (no ids or timestamps leak in).
+    with transaction() as conn:
+        conn.execute(
+            "INSERT INTO entities (entity_id, code, name, metadata) VALUES ('entity-b','B','Entity B','{}')"
+        )
+    reordered = list(items)
+    random.Random(99).shuffle(reordered)
+    for i, item in enumerate(reordered):
+        upsert_budget_item(
+            {**item, "item_key": f"b-{item['item_key']}", "entity_id": "entity-b", "correlation_id": f"replay-b-{i}"}
+        )
+    summary_default = get_budget_summary({"correlation_id": "replay-ent", "entity_id": "entity-default"})
+    summary_b = get_budget_summary({"correlation_id": "replay-ent", "entity_id": "entity-b"})
+    assert summary_default["item_count"] == summary_b["item_count"] == len(items)
+    assert summary_default["output_hash"] == summary_b["output_hash"]
+
+
+def test_forecast_cash_hash_reproducible_and_order_independent(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from datetime import date
+
+    from capital_os.domain.budget.service import upsert_budget_item
+    from capital_os.domain.forecast.service import forecast_cash
+    from tests.support.budget_seed import create_budget_accounts, reference_items
+
+    acct = create_budget_accounts()
+    items = reference_items(acct, citizens_payroll="2960.00")
+    random.Random(11).shuffle(items)
+    for i, item in enumerate(items):
+        upsert_budget_item({**item, "entity_id": "entity-default", "correlation_id": f"fc-seed-{i}"})
+
+    request = {
+        "account_id": acct["citizens"],
+        "as_of_date": date(2026, 10, 19),
+        "days": 163,
+        "starting_balance": Decimal("5116.31"),
+        "threshold": Decimal("200"),
+        "correlation_id": "fc-replay",
+    }
+    first = forecast_cash(dict(request))
+    second = forecast_cash(dict(request))
+    assert first == second
+    assert first["output_hash"] == second["output_hash"]
+    assert len(first["output_hash"]) == 64
+    # Event order is a pure function of (date, inflow-first, name, source id), not insertion order.
+    keys = [(e["date"], 0 if e["direction"] == "inflow" else 1, e["name"], e["source_id"]) for e in first["events"]]
+    assert keys == sorted(keys)

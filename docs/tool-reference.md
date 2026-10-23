@@ -215,6 +215,63 @@ capital-os tool call record_transaction_bundle --json '{
   - `status = "created"` on first insert.
   - `status = "updated"` on existing obligation update.
 - Reactivates obligation (`active = 1`) on update path.
+- Optional recurrence fields: `recurrence` (`monthly|biweekly|quarterly|annual|one_time`), `day_of_month` (1-31), `funding_account_id` (must exist in `accounts`, else the call fails with `tool_execution_error`/HTTP 400 and nothing is written), `bucket` (`recurring|debt|discretionary|savings|annual`).
+- On insert the provided values are stored (NULL otherwise). On update a field is written only when a non-null value is supplied; omitting it (or passing null) leaves the stored value unchanged. To stop rolling, set `recurrence = "one_time"`.
+- Legacy payloads (none of the new fields) produce the same `input_hash` as before: null new keys are excluded from the hashed payload.
+- Logs event in same transaction.
+
+## `upsert_budget_item`
+- Handler: `src/capital_os/tools/upsert_budget_item.py`
+- Domain service: `src/capital_os/domain/budget/service.py::upsert_budget_item`
+- Input schema: `UpsertBudgetItemIn`; output schema: `UpsertBudgetItemOut`
+- Capability: `tools:write` (fail-closed write tool).
+
+### Behavior
+- Versioned upsert keyed by `item_key`. Fields: `name`, `direction` (`inflow|outflow`), `amount` (per occurrence, >= 0, normalized to 4dp half-even), `cadence` (`monthly|biweekly|quarterly|annual`), `day_of_month`, `anchor_date`, `account_id`, `bucket`, `effective_date` (required), `source`, `metadata`, `entity_id`, `active` (default true).
+- Validation (HTTP 422): outflow requires `bucket`; inflow forbids `bucket`; monthly requires `day_of_month`; biweekly/quarterly/annual require `anchor_date`. Unknown `account_id` fails with HTTP 400 and writes nothing. `account_id` null means untracked (for example a deposit into an account not in the ledger).
+- Status:
+  - `created`: no prior version.
+  - `unchanged`: an active version exists with identical content (including `effective_date`); nothing is written and the existing `item_id` is returned.
+  - `versioned`: content differs; the active version is deactivated and a new row inserted in the same transaction.
+  - `deactivated`: `active=false` switched off the current active version.
+- `active=false` with no active version returns `unchanged` (with the latest version's `item_id`); an `item_key` that never existed fails with HTTP 400.
+- Rows are never edited or deleted (a DB trigger rejects both); only `active` may go 1 -> 0.
+- Logs event in same transaction.
+
+## `list_budget_items`
+- Handler: `src/capital_os/tools/list_budget_items.py`
+- Input schema: `ListBudgetItemsIn`; output schema: `ListBudgetItemsOut`; capability `tools:read`.
+- Keyset pagination ordered by `(item_key, effective_date, item_id)`; `limit` default 50, max 500; opaque `cursor`.
+- Filters: `active_only` (default true), `direction`, `bucket`, `account_id`. Set `active_only=false` to see version history.
+- Rows carry content fields plus `item_id` and `active`; audit timestamps are excluded so `output_hash` is reproducible.
+
+## `get_budget_summary`
+- Handler: `src/capital_os/tools/get_budget_summary.py`
+- Input schema: `GetBudgetSummaryIn` (optional `entity_id`, optional `as_of_date`); output schema: `GetBudgetSummaryOut`; capability `tools:read`.
+- Uses active versions (excluding those with `effective_date > as_of_date` when given) and converts each to a monthly equivalent (monthly x1, biweekly x26/12, quarterly /3, annual /12) in full-precision Decimal; values are quantized to 4dp half-even only in the output.
+- Returns `take_home_monthly` (all inflows), `untracked_inflows_monthly` (inflows with no `account_id`), `buckets` (ordered recurring, debt, annual, discretionary, savings; `monthly_amount` and `pct_of_take_home` as a percent), `total_outflows_monthly`, `leftover_monthly` (= take-home - untracked - outflows), `accounts` (per `account_id`, sorted: `inflow_monthly`, `outflow_monthly`, `net_monthly`), `item_count`.
+
+## `forecast_cash`
+- Handler: `src/capital_os/tools/forecast_cash.py`; domain: `src/capital_os/domain/forecast/`. Input `ForecastCashIn`, output `ForecastCashOut`; capability `tools:read`. Read-only (no new tables); event-logged like `get_budget_summary`.
+- Inputs: `account_id` (must exist, else 400), `as_of_date` (required; the tool never reads the wall clock), `days` (1..730), optional `starting_balance`, `include_unposted` (default false), optional `threshold`, `entity_id`.
+- Starting balance: `starting_balance` if given (`start.source = explicit`); else the latest `balance_snapshots` row for the account with `substr(snapshot_date,1,10) <= as_of_date` (ties: full text then `snapshot_id` descending); none -> 400. With `include_unposted` and a snapshot source, budget/obligation events dated in `(snapshot_date, as_of_date]` are applied to the start balance and listed in `unposted_events`; ignored for an explicit balance.
+- Events for dates in `(as_of_date, as_of_date + days]`: active budget items whose `account_id` is the account (inflow +, outflow -), and active obligations with `funding_account_id` = the account and `recurrence` NULL or `one_time` (outflow of `expected_amount`). Recurring obligations are excluded because budget items represent them.
+- Schedules: monthly on `day_of_month` clamped to month end; biweekly `anchor_date + 14k`; quarterly/annual anchor + 3k/12k months (clamped from the anchor day). Occurrences before an item's `effective_date` (nominal date) are skipped. Dates are generated nominally, then Saturday/Sunday move to Monday (`next_business_day`, no holidays) and the window filter applies to the adjusted date. Items missing their day/anchor are listed in `unscheduled_items`.
+- Same-day order: inflows first, then outflows by name, then source id. `monthly_minimums` has one row per calendar month touched by the window: the lowest balance after any event in that month (earliest on ties), or the carried-in balance with null `date`/`item` for an event-free month. `overall_minimum` is the start balance (null date/item) unless an event goes lower. `below_threshold` is true if any balance including the start is under `threshold` (null without a threshold).
+- Decimal math, quantized to 4dp half-even at output; the output contains no timestamps, so `output_hash` is a pure function of DB state and inputs.
+
+## `fulfill_obligation`
+- Handler: `src/capital_os/tools/fulfill_obligation.py`
+- Domain service: `src/capital_os/domain/ledger/service.py::fulfill_obligation`
+- Input schema: `FulfillObligationIn` (`obligation_id`, optional `fulfilled_by_transaction_id`, `fulfilled_at`, `expected_due_date`)
+- Output schema: `FulfillObligationOut`
+
+### Behavior
+- Legacy / `one_time` rows (`recurrence` NULL or `one_time`): sets `active = 0` and records `fulfilled_by_transaction_id` / `fulfilled_at`. An inactive row returns `status = "already_fulfilled"` with no write.
+- Recurring rows (`monthly`, `quarterly`, `annual`, `biweekly`): the row stays active, `fulfilled_*` is overwritten with the latest fulfillment and `next_due_date` rolls forward one cycle (+1, +3, +12 months using `day_of_month` when set, clamped to month end; biweekly +14 days). Rolling uses only stored data. No weekend adjustment (that is a forecast concern). The response includes the new `next_due_date`.
+- `expected_due_date` (optional replay guard): if supplied and different from the stored `next_due_date`, the call is a no-op returning `already_fulfilled` with the stored `fulfilled_*` values (and the stored `next_due_date` for recurring rows). Without the guard, a repeated call on a recurring row rolls forward again.
+- `fulfilled_at` defaults to the current UTC time when omitted (pre-existing behavior; pass it explicitly for replay-stable output).
+- Legacy payloads/responses keep their hashes: `expected_due_date` is excluded from the hashed input when null, and `next_due_date` appears in the hashed response only for recurring rows.
 - Logs event in same transaction.
 
 ## `compute_capital_posture`
@@ -412,7 +469,8 @@ capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq
 
 ### Behavior
 - Deterministic keyset pagination ordered by `(next_due_date ASC, obligation_id ASC)`.
-- Supports `active_only` filter with deterministic output.
+- Supports `active_only` filter with deterministic output. `active_only` defaults to `true` (active obligations only); pass `active_only=false` for the archive view, which includes fulfilled and inactive rows.
+- Each item also carries `recurrence`, `day_of_month`, `funding_account_id` and `bucket` (null for rows that predate migration 0013). Null values are omitted from the hashed payload so `output_hash` for legacy rows is unchanged; existing fields (`name`, `expected_amount`, `next_due_date`, ...) are unchanged.
 - Cursor is canonical opaque payload over `{v, next_due_date, obligation_id}`.
 - Emits event logs for success and validation failures.
 
@@ -484,6 +542,14 @@ capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq
   - `best_available`: behaves like snapshot when snapshot exists, otherwise ledger.
 - Suggested adjustments are always proposal-only (`auto_commit = false`) and never write ledger rows.
 - Emits event logs for success and validation failures.
+
+## Common household workflows
+
+- **Snapshots:** `record_balance_snapshot` per account/date (upsert), then `get_account_balances` with `source_policy` `best_available`.
+- **Obligations:** `create_or_update_obligation` (add recurrence fields for repeating bills), `list_obligations` (active by default, `active_only=false` for the archive), `fulfill_obligation` when paid. To fulfill from bank CSVs in bulk, use the offline script in [automatch.md](automatch.md).
+- **Bills:** the household `capos bill` wrapper creates one-time obligations through `create_or_update_obligation`.
+- **Budget:** `upsert_budget_item` to add or change a line (versioned), `list_budget_items` to inspect, `get_budget_summary` for bucket totals and leftover.
+- **Forecast:** `forecast_cash` with an explicit `as_of_date`, `days` and optional `threshold` to see dated events, monthly lows and the overall minimum.
 
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.

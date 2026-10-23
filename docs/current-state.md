@@ -225,3 +225,8 @@ Implemented DB protections include:
 - CI workflow: `.github/workflows/ci.yml`
 - Traceability matrix: `docs/traceability-matrix.md`
 - Determinism replay expansion: `tests/replay/test_output_replay.py`
+
+## Ledger status (Oct 2026)
+- The ledger is frozen history plus manual entries; bulk imports are discontinued.
+- Approvals are retired in production via `CAPITAL_OS_APPROVALS_ENABLED=false` (threshold/policy outcomes no longer force proposals; period-lock forcing is unchanged).
+- Duplicate-risk matches still produce `proposed` responses as a safety net.

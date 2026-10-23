@@ -5,6 +5,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from capital_os.domain.approval.policy import transaction_impact_amount
+from capital_os.config import get_settings
 from capital_os.domain.approval.repository import (
     fetch_proposal_by_source_external,
     insert_proposal,
@@ -193,7 +194,13 @@ def record_transaction_bundle(payload: dict) -> dict:
             )
             duplicate_approval_required = bool(duplicate_matches)
 
-            if policy_decision.approval_required or duplicate_approval_required:
+            # With approvals disabled, only period-lock forcing and duplicate
+            # matches route to a proposal; threshold/policy outcomes are ignored.
+            policy_approval_required = (
+                policy_decision.approval_required if get_settings().approvals_enabled else force_approval
+            )
+
+            if policy_approval_required or duplicate_approval_required:
                 proposal = fetch_proposal_by_source_external(
                     conn,
                     tool_name="record_transaction_bundle",

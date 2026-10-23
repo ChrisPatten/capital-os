@@ -190,6 +190,7 @@ When instructions conflict, follow this order:
 | `CAPITAL_OS_AUTH_TOKEN` | `dev-admin-token` | Auth token for API calls |
 | `CAPITAL_OS_BALANCE_SOURCE_POLICY` | `best_available` | `ledger_only`, `snapshot_only`, or `best_available` |
 | `CAPITAL_OS_APPROVAL_THRESHOLD_AMOUNT` | `1000.0000` | Threshold for approval workflow |
+| `CAPITAL_OS_APPROVALS_ENABLED` | `true` | When false, threshold/policy approvals are skipped (ledger frozen; manual entries commit directly). Duplicate-match proposals still apply. |
 | `CAPITAL_OS_AUTH_TOKENS_JSON` | (built-in dev tokens) | JSON override for token->identity map |
 | `CAPITAL_OS_TOOL_CAPABILITIES_JSON` | (built-in defaults) | JSON override for tool->capability map |
 | `CAPITAL_OS_IDLE_SECONDS` | `300` | Idle auto-shutdown for `make serve-idle` |

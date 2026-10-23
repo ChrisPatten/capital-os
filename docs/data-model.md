@@ -1,6 +1,6 @@
 # Data Model Reference
 
-As of 2026-02-16. Source migrations:
+As of 2026-10-23. Source migrations (0011/0012 are reserved, see the note under `obligations`):
 - `migrations/0001_ledger_core.sql`
 - `migrations/0002_security_and_append_only.sql`
 - `migrations/0003_approval_gates.sql`
@@ -9,6 +9,10 @@ As of 2026-02-16. Source migrations:
 - `migrations/0006_periods_policies.sql`
 - `migrations/0007_query_surface_indexes.sql`
 - `migrations/0008_api_security_runtime_controls.sql`
+- `migrations/0009_obligation_fulfillment.sql`
+- `migrations/0010_account_identifier_history.sql`
+- `migrations/0013_obligation_recurrence.sql`
+- `migrations/0014_budget_items.sql`
 
 ## Canonical Tables
 

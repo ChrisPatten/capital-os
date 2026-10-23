@@ -1,6 +1,6 @@
 # Current Implementation State
 
-As of 2026-03-05.
+As of 2026-10-23 (the Oct 2026 section at the end supersedes older statements below).
 
 ## Delivery Snapshot
 - Runtime stack is active: Python 3.11+, FastAPI transport, SQLite canonical store, Pytest suite.
@@ -130,6 +130,11 @@ As of 2026-03-05.
   - `reconcile_account`
   - `close_period`
   - `lock_period`
+  - `update_account_metadata`, `update_account_profile`
+  - `fulfill_obligation`
+  - `upsert_budget_item`, `list_budget_items`, `get_budget_summary` (Oct 2026)
+  - `forecast_cash` (Oct 2026)
+  - 31 tools in total; source of truth is `TOOL_HANDLERS` in `src/capital_os/runtime/execute_tool.py`.
 
 ## Domain and Persistence Modules
 - Accounts domain:
@@ -175,6 +180,7 @@ As of 2026-03-05.
 - Period/policy expansion migration: `migrations/0006_periods_policies.sql`
 - Query-surface index migration: `migrations/0007_query_surface_indexes.sql`
 - API security runtime controls migration: `migrations/0008_api_security_runtime_controls.sql`
+- Later migrations: `0009_obligation_fulfillment`, `0010_account_identifier_history`, `0013_obligation_recurrence`, `0014_budget_items`. There is no 0011/0012 on this branch (see Oct 2026 section).
 - Rollback scripts are present:
   - `migrations/0001_ledger_core.rollback.sql`
   - `migrations/0002_security_and_append_only.rollback.sql`
@@ -230,3 +236,18 @@ Implemented DB protections include:
 - The ledger is frozen history plus manual entries; bulk imports are discontinued.
 - Approvals are retired in production via `CAPITAL_OS_APPROVALS_ENABLED=false` (threshold/policy outcomes no longer force proposals; period-lock forcing is unchanged).
 - Duplicate-risk matches still produce `proposed` responses as a safety net.
+- Frozen-ledger stance, in detail:
+  - `record_transaction_bundle` stays available for manual entries (for example a water bill paid from checking); it does not need imports.
+  - Bank/card imports (Apple Card, SFCU, Citizens, Amex) stopped in 2026. Spending analysis reads bank CSVs directly, not the ledger.
+  - Existing history is never deleted or edited; corrections are compensating entries.
+  - Pending `proposed` rows on the live DB are left for Chris to approve or reject; nothing here decides for him.
+
+## Oct 2026 additions (slimming plan items 2-6)
+- **Recurring obligations** (migration 0013): `obligations` gains nullable `recurrence` (`monthly|biweekly|quarterly|annual|one_time`), `day_of_month`, `funding_account_id`, `bucket`. `fulfill_obligation` on a recurring row keeps it active and rolls `next_due_date` forward one cycle (month-end safe, no weekend adjustment); one-time and legacy rows deactivate as before. Old payloads and rows hash identically. `list_obligations` defaults to `active_only=true`; `active_only=false` is the archive view of fulfilled/inactive rows.
+- **Budget** (migration 0014): `budget_items` rows are versioned by `item_key` (a change inserts a new version and deactivates the old one; rows are never edited or deleted). `upsert_budget_item`, `list_budget_items`, `get_budget_summary` (monthly equivalents by bucket, percent of take-home, per-account net).
+- **Forecast**: `forecast_cash` is a read-only, deterministic projection (explicit `as_of_date`, no wall clock, no new tables) from the latest snapshot plus budget items and one-time funded obligations, with weekend dates moved to Monday.
+- **Auto-match**: `scripts/match_obligation_payments.py` reads bank CSVs offline and fulfills matching obligations (dry run by default). See [automatch.md](automatch.md).
+- **Approvals off switch**: `CAPITAL_OS_APPROVALS_ENABLED=false` in production (Item 1).
+- **Migration number gap**: 0011 and 0012 were the inbox and Plaid migrations. Those subsystems are parked on branches and are not in this tree, but their (empty) tables are already applied on the live DB, so the numbers stay reserved; this branch continues at 0013.
+- **Dormant subsystems**: Plaid and inbox code is parked on branches (their tables exist, empty, on the live DB only). Periods (`close_period`/`lock_period`), policy rules and the approval flow remain in the code and tools but are unused (zero `accounting_periods` and `policy_rules` rows).
+- **MCP**: `mcp/server.py` exposes all 31 tools; `update_account_profile` was previously missing and `tests/unit/test_mcp_registry_complete.py` now guards against drift. The `mcp` extra is pinned `<2`.

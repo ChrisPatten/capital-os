@@ -145,31 +145,41 @@ capital-os tool call create_or_update_obligation --json '{
 }'
 ```
 
-### Step 3 — Record transactions (double-entry)
+### Step 3 — Budget and forecast
+
+The ledger is frozen history plus manual entries (see "Frozen" at the end). Day-to-day planning uses obligations, the budget and the forecast.
+
+Recurring obligations: add `recurrence` (`monthly|biweekly|quarterly|annual|one_time`), `day_of_month`, `funding_account_id`, `bucket` (`recurring|debt|discretionary|savings|annual`) to `create_or_update_obligation`. `fulfill_obligation` on a recurring row keeps it active and rolls `next_due_date` forward one cycle; one-time rows deactivate. Pass `expected_due_date` to make a retry a no-op. `list_obligations` shows active rows by default; `active_only=false` is the archive.
 
 ```bash
-capital-os tool call record_transaction_bundle --json '{
-  "source_system": "manual",
-  "external_id": "tx-2026-02-23-dinner",
-  "date": "2026-02-23T19:05:00Z",
-  "description": "Dinner",
-  "postings": [
-    {"account_id": "<expense_account_id>", "amount": "45.1200", "currency": "USD"},
-    {"account_id": "<liability_account_id>", "amount": "-45.1200", "currency": "USD"}
-  ],
-  "correlation_id": "txn-001"
+capital-os tool call upsert_budget_item --json '{
+  "item_key": "mortgage",
+  "name": "Mortgage",
+  "direction": "outflow",
+  "amount": "3127.4600",
+  "cadence": "monthly",
+  "day_of_month": 3,
+  "account_id": "<account_id>",
+  "bucket": "recurring",
+  "effective_date": "2026-10-01",
+  "correlation_id": "budget-001"
+}'
+capital-os tool call list_budget_items --json '{"correlation_id": "budget-002"}'
+capital-os tool call get_budget_summary --json '{"correlation_id": "budget-003"}'
+
+# Cash forecast: explicit as_of_date, no wall clock
+capital-os tool call forecast_cash --json '{
+  "account_id": "<account_id>",
+  "as_of_date": "2026-10-23",
+  "days": 90,
+  "threshold": "200.0000",
+  "correlation_id": "fc-001"
 }'
 ```
 
-If the response has `status="proposed"`, the transaction was NOT committed (approval policy triggered). Follow up with:
+Budget items are versioned: changing a line inserts a new version and deactivates the old one (`status` is `created|unchanged|versioned|deactivated`). Inflows omit `bucket`; biweekly/quarterly/annual items need `anchor_date`. See `docs/tool-reference.md` for the full field list.
 
-```bash
-capital-os tool call approve_proposed_transaction --json '{
-  "proposal_id": "<proposal_id>",
-  "reason": "approved",
-  "correlation_id": "approve-001"
-}'
-```
+To fulfill obligations in bulk from bank CSVs (dry run first, `--apply` to write): `scripts/match_obligation_payments.py` (`docs/automatch.md`).
 
 ## Verification queries
 
@@ -269,3 +279,35 @@ Key error codes in the payload:
 - Use 4 dp decimal strings for monetary values (`"45.1200"` not `45.12`).
 - Use stable `external_id` values (hash of source artifact + line item id is ideal).
 - Identical stored state + identical input always produces identical `output_hash`.
+
+## Frozen (rarely used)
+
+The ledger is frozen history plus manual entries. Bank imports are discontinued, and approvals are disabled in production (`CAPITAL_OS_APPROVALS_ENABLED=false`), though duplicate-match proposals can still appear.
+
+### Manual transaction (double-entry)
+
+```bash
+capital-os tool call record_transaction_bundle --json '{
+  "source_system": "manual",
+  "external_id": "tx-2026-02-23-dinner",
+  "date": "2026-02-23T19:05:00Z",
+  "description": "Dinner",
+  "postings": [
+    {"account_id": "<expense_account_id>", "amount": "45.1200", "currency": "USD"},
+    {"account_id": "<liability_account_id>", "amount": "-45.1200", "currency": "USD"}
+  ],
+  "correlation_id": "txn-001"
+}'
+```
+
+If the response has `status="proposed"`, the transaction was NOT committed (approval policy triggered). Follow up with:
+
+```bash
+capital-os tool call approve_proposed_transaction --json '{
+  "proposal_id": "<proposal_id>",
+  "reason": "approved",
+  "correlation_id": "approve-001"
+}'
+```
+
+Other proposal tools: `list_proposals`, `get_proposal`, `reject_proposed_transaction`. Period tools (`close_period`, `lock_period`), config governance (`get_config`, `propose_config_change`, `approve_config_change`) and analysis tools (`compute_capital_posture`, `simulate_spend`, `analyze_debt`) are dormant.

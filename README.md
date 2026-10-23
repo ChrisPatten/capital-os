@@ -2,7 +2,10 @@
 
 Capital OS is a deterministic, auditable financial truth layer built around a double-entry ledger and schema-validated tool APIs for agent use.
 
-## Current Status (2026-02-23)
+## Current Status (2026-10-23)
+- **Oct 2026 stance:** the ledger is frozen history plus manual entries; bulk imports are discontinued and approvals are disabled in production (`CAPITAL_OS_APPROVALS_ENABLED=false`). Daily use is balance snapshots, obligations (with recurrence and funding account), a versioned budget, and `forecast_cash`. Plaid and the inbox are parked on branches. See `docs/slimming-plan-2026-10.md` and `docs/current-state.md`.
+- Offline payment auto-match: `scripts/match_obligation_payments.py` (`docs/automatch.md`).
+- The entries below describe the original build-out.
 - Core ledger foundation is implemented: accounts, balanced transaction bundles, idempotency, balance snapshots, obligations, and event logging.
 - Capital posture tooling is implemented (`compute_capital_posture`, `compute_consolidated_posture`).
 - Spend simulation tooling is implemented (`simulate_spend`) with contract, logging, and latency guardrail coverage.
@@ -182,30 +185,18 @@ python3 scripts/import_coa.py config/coa.yaml --dry-run
   - `GET /health`
 - Tool endpoint:
   - `POST /tools/{tool_name}`
-- Registered tools:
-  - `record_transaction_bundle`
-  - `record_balance_snapshot`
-  - `create_or_update_obligation`
-  - `compute_capital_posture`
-  - `compute_consolidated_posture`
-  - `simulate_spend`
-  - `analyze_debt`
-  - `approve_proposed_transaction`
-  - `reject_proposed_transaction`
-  - `list_accounts`
-  - `get_account_tree`
-  - `get_account_balances`
-  - `list_transactions`
-  - `get_transaction_by_external_id`
-  - `list_obligations`
-  - `list_proposals`
-  - `get_proposal`
-  - `get_config`
-  - `propose_config_change`
-  - `approve_config_change`
-  - `reconcile_account`
-  - `close_period`
-  - `lock_period`
+- Registered tools (31; source of truth `TOOL_HANDLERS` in `src/capital_os/runtime/execute_tool.py`):
+  - Core daily use:
+    - Snapshots and balances: `record_balance_snapshot`, `get_account_balances`, `reconcile_account`
+    - Obligations: `create_or_update_obligation`, `list_obligations`, `fulfill_obligation`
+    - Budget and forecast: `upsert_budget_item`, `list_budget_items`, `get_budget_summary`, `forecast_cash`
+    - Accounts: `list_accounts`, `get_account_tree`, `create_account`, `update_account_metadata`, `update_account_profile`
+    - Manual ledger entries and history: `record_transaction_bundle`, `list_transactions`, `get_transaction_by_external_id`
+  - Frozen or dormant (kept working, rarely used):
+    - Approvals: `list_proposals`, `get_proposal`, `approve_proposed_transaction`, `reject_proposed_transaction`
+    - Config governance: `get_config`, `propose_config_change`, `approve_config_change`
+    - Periods: `close_period`, `lock_period`
+    - Analysis: `compute_capital_posture`, `compute_consolidated_posture`, `simulate_spend`, `analyze_debt`
 
 ## Example Tool Call
 ```bash
@@ -237,6 +228,8 @@ curl -sS -X POST http://127.0.0.1:8000/tools/record_transaction_bundle \
 ## Documentation Index
 - `docs/README.md`
 - `docs/current-state.md`
+- `docs/automatch.md`
+- `docs/slimming-plan-2026-10.md`
 - `docs/tool-reference.md`
 - `docs/data-model.md`
 - `docs/testing-matrix.md`

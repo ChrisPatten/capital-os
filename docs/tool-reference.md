@@ -469,7 +469,7 @@ capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq
 
 ### Behavior
 - Deterministic keyset pagination ordered by `(next_due_date ASC, obligation_id ASC)`.
-- Supports `active_only` filter with deterministic output.
+- Supports `active_only` filter with deterministic output. `active_only` defaults to `true` (active obligations only); pass `active_only=false` for the archive view, which includes fulfilled and inactive rows.
 - Each item also carries `recurrence`, `day_of_month`, `funding_account_id` and `bucket` (null for rows that predate migration 0013). Null values are omitted from the hashed payload so `output_hash` for legacy rows is unchanged; existing fields (`name`, `expected_amount`, `next_due_date`, ...) are unchanged.
 - Cursor is canonical opaque payload over `{v, next_due_date, obligation_id}`.
 - Emits event logs for success and validation failures.
@@ -542,6 +542,14 @@ capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq
   - `best_available`: behaves like snapshot when snapshot exists, otherwise ledger.
 - Suggested adjustments are always proposal-only (`auto_commit = false`) and never write ledger rows.
 - Emits event logs for success and validation failures.
+
+## Common household workflows
+
+- **Snapshots:** `record_balance_snapshot` per account/date (upsert), then `get_account_balances` with `source_policy` `best_available`.
+- **Obligations:** `create_or_update_obligation` (add recurrence fields for repeating bills), `list_obligations` (active by default, `active_only=false` for the archive), `fulfill_obligation` when paid. To fulfill from bank CSVs in bulk, use the offline script in [automatch.md](automatch.md).
+- **Bills:** the household `capos bill` wrapper creates one-time obligations through `create_or_update_obligation`.
+- **Budget:** `upsert_budget_item` to add or change a line (versioned), `list_budget_items` to inspect, `get_budget_summary` for bucket totals and leftover.
+- **Forecast:** `forecast_cash` with an explicit `as_of_date`, `days` and optional `threshold` to see dated events, monthly lows and the overall minimum.
 
 ## Error Semantics
 - Unknown tool: HTTP `404`, `{"error":"unknown_tool","tool":<tool_name>}`.

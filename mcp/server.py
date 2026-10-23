@@ -50,6 +50,7 @@ from capital_os.schemas.tools import (  # noqa: E402
     RejectProposedTransactionIn,
     SimulateSpendIn,
     UpdateAccountMetadataIn,
+    UpdateAccountProfileIn,
 )
 
 # ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ from capital_os.schemas.tools import (  # noqa: E402
 _TOOL_REGISTRY: list[tuple[str, type, str]] = [
     ("create_account", CreateAccountIn, "Create a new account in the chart of accounts"),
     ("update_account_metadata", UpdateAccountMetadataIn, "Update metadata on an existing account"),
+    ("update_account_profile", UpdateAccountProfileIn, "Update an account display name and institution profile fields (idempotent)"),
     ("list_accounts", ListAccountsIn, "List accounts with cursor-based pagination"),
     ("get_account_tree", GetAccountTreeIn, "Retrieve the account hierarchy as a tree"),
     ("get_account_balances", GetAccountBalancesIn, "Get balances for all accounts as of a given date"),

@@ -336,3 +336,57 @@ def test_duplicate_risk_proposal_output_hash_reproducible_on_replay(db_available
     assert first["output_hash"] == second["output_hash"]
     assert first["proposed_transaction"] == second["proposed_transaction"]
     assert first["matched_transactions"] == second["matched_transactions"]
+
+
+def test_recurring_obligation_fulfill_and_list_hashes_reproducible(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from datetime import date
+
+    from capital_os.domain.ledger.service import create_or_update_obligation, fulfill_obligation
+    from capital_os.tools.list_obligations import handle as list_obligations_tool
+
+    with transaction() as conn:
+        account_id = create_account(conn, {"code": "2399", "name": "Replay Obligation", "account_type": "liability"})
+    created = create_or_update_obligation(
+        {
+            "source_system": "pytest",
+            "name": "Replay Mortgage",
+            "account_id": account_id,
+            "cadence": "monthly",
+            "expected_amount": Decimal("3127.4600"),
+            "variability_flag": False,
+            "next_due_date": date(2026, 11, 3),
+            "metadata": {},
+            "active": True,
+            "entity_id": "entity-default",
+            "recurrence": "monthly",
+            "day_of_month": 3,
+            "funding_account_id": account_id,
+            "bucket": "recurring",
+            "correlation_id": "replay-create",
+        }
+    )
+    fulfill_payload = {
+        "obligation_id": created["obligation_id"],
+        "fulfilled_by_transaction_id": "txn-1",
+        "fulfilled_at": "2026-11-03T00:00:00.000000+00:00",
+        "expected_due_date": date(2026, 11, 3),
+        "correlation_id": "replay-fulfill",
+    }
+    first = fulfill_obligation(dict(fulfill_payload))
+    assert first["status"] == "fulfilled"
+    assert first["next_due_date"] == "2026-12-03"
+
+    # Replaying with the guard is a no-op with a reproducible output_hash.
+    replay_a = fulfill_obligation(dict(fulfill_payload))
+    replay_b = fulfill_obligation(dict(fulfill_payload))
+    assert replay_a["status"] == "already_fulfilled"
+    assert replay_a["output_hash"] == replay_b["output_hash"]
+
+    list_a = list_obligations_tool({"correlation_id": "replay-list"}).model_dump(mode="json")
+    list_b = list_obligations_tool({"correlation_id": "replay-list"}).model_dump(mode="json")
+    assert list_a["obligations"][0]["recurrence"] == "monthly"
+    assert list_a["obligations"][0]["next_due_date"] == "2026-12-03"
+    assert list_a["output_hash"] == list_b["output_hash"]

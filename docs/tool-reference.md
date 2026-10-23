@@ -215,6 +215,23 @@ capital-os tool call record_transaction_bundle --json '{
   - `status = "created"` on first insert.
   - `status = "updated"` on existing obligation update.
 - Reactivates obligation (`active = 1`) on update path.
+- Optional recurrence fields: `recurrence` (`monthly|biweekly|quarterly|annual|one_time`), `day_of_month` (1-31), `funding_account_id` (must exist in `accounts`, else the call fails with `tool_execution_error`/HTTP 400 and nothing is written), `bucket` (`recurring|debt|discretionary|savings|annual`).
+- On insert the provided values are stored (NULL otherwise). On update a field is written only when a non-null value is supplied; omitting it (or passing null) leaves the stored value unchanged. To stop rolling, set `recurrence = "one_time"`.
+- Legacy payloads (none of the new fields) produce the same `input_hash` as before: null new keys are excluded from the hashed payload.
+- Logs event in same transaction.
+
+## `fulfill_obligation`
+- Handler: `src/capital_os/tools/fulfill_obligation.py`
+- Domain service: `src/capital_os/domain/ledger/service.py::fulfill_obligation`
+- Input schema: `FulfillObligationIn` (`obligation_id`, optional `fulfilled_by_transaction_id`, `fulfilled_at`, `expected_due_date`)
+- Output schema: `FulfillObligationOut`
+
+### Behavior
+- Legacy / `one_time` rows (`recurrence` NULL or `one_time`): sets `active = 0` and records `fulfilled_by_transaction_id` / `fulfilled_at`. An inactive row returns `status = "already_fulfilled"` with no write.
+- Recurring rows (`monthly`, `quarterly`, `annual`, `biweekly`): the row stays active, `fulfilled_*` is overwritten with the latest fulfillment and `next_due_date` rolls forward one cycle (+1, +3, +12 months using `day_of_month` when set, clamped to month end; biweekly +14 days). Rolling uses only stored data. No weekend adjustment (that is a forecast concern). The response includes the new `next_due_date`.
+- `expected_due_date` (optional replay guard): if supplied and different from the stored `next_due_date`, the call is a no-op returning `already_fulfilled` with the stored `fulfilled_*` values (and the stored `next_due_date` for recurring rows). Without the guard, a repeated call on a recurring row rolls forward again.
+- `fulfilled_at` defaults to the current UTC time when omitted (pre-existing behavior; pass it explicitly for replay-stable output).
+- Legacy payloads/responses keep their hashes: `expected_due_date` is excluded from the hashed input when null, and `next_due_date` appears in the hashed response only for recurring rows.
 - Logs event in same transaction.
 
 ## `compute_capital_posture`
@@ -413,6 +430,7 @@ capital-os tool call list_accounts --json '{"correlation_id": "local-003"}' | jq
 ### Behavior
 - Deterministic keyset pagination ordered by `(next_due_date ASC, obligation_id ASC)`.
 - Supports `active_only` filter with deterministic output.
+- Each item also carries `recurrence`, `day_of_month`, `funding_account_id` and `bucket` (null for rows that predate migration 0013). Null values are omitted from the hashed payload so `output_hash` for legacy rows is unchanged; existing fields (`name`, `expected_amount`, `next_due_date`, ...) are unchanged.
 - Cursor is canonical opaque payload over `{v, next_due_date, obligation_id}`.
 - Emits event logs for success and validation failures.
 

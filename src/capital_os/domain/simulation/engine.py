@@ -6,19 +6,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from capital_os.domain.dates import add_months
 from capital_os.domain.ledger.invariants import normalize_amount
 from capital_os.observability.hashing import payload_hash
-
-
-def _add_months(source: date, months: int) -> date:
-    year = source.year + ((source.month - 1 + months) // 12)
-    month = ((source.month - 1 + months) % 12) + 1
-    day = source.day
-    if month == 2 and day > 28:
-        day = 29 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 28
-    elif month in {4, 6, 9, 11} and day > 30:
-        day = 30
-    return date(year, month, day)
 
 
 class SimulationSpend(BaseModel):
@@ -117,7 +107,7 @@ def _recurring_dates(spend: SimulationSpend) -> list[date]:
     dates: list[date] = []
     for idx in range(spend.occurrences):
         if spend.cadence == "monthly":
-            dates.append(_add_months(spend.start_date, idx))
+            dates.append(add_months(spend.start_date, idx))
         else:
             dates.append(spend.start_date + timedelta(days=7 * idx))
     return dates
@@ -130,8 +120,8 @@ def compute_simulation_projection(inputs: SimulationInputs) -> SimulationProject
     current_liquidity = inputs.starting_liquidity
     periods: list[SimulationPeriod] = []
     for period_index in range(inputs.horizon_periods):
-        period_start = _add_months(inputs.start_date, period_index)
-        period_end = _add_months(period_start, 1) - timedelta(days=1)
+        period_start = add_months(inputs.start_date, period_index)
+        period_end = add_months(period_start, 1) - timedelta(days=1)
 
         one_time_total = Decimal("0.0000")
         recurring_total = Decimal("0.0000")

@@ -117,10 +117,22 @@ Key fields:
 - `metadata TEXT NOT NULL DEFAULT '{}'`
 - `active INTEGER NOT NULL DEFAULT 1`
 - `entity_id TEXT NOT NULL REFERENCES entities(entity_id)`
+- `fulfilled_by_transaction_id TEXT`, `fulfilled_at TEXT` (migration 0009)
+- `recurrence TEXT NULL CHECK IN ('monthly','biweekly','quarterly','annual','one_time')` (migration 0013)
+- `day_of_month INTEGER NULL CHECK BETWEEN 1 AND 31` (0013)
+- `funding_account_id TEXT NULL` (0013; deliberately no FK clause because SQLite `DROP COLUMN` rejects FK columns, existence is validated in the service layer)
+- `bucket TEXT NULL CHECK IN ('recurring','debt','discretionary','savings','annual')` (0013)
 
 Constraints:
 - Unique `(source_system, name, account_id)`.
 - Service layer update path reactivates records by setting `active = 1`.
+
+`recurrence` vs legacy `cadence`:
+- `cadence` is the original three-value label and is NOT a reliable recurrence signal (many one-off bills were tagged `monthly`). It is unchanged and still required.
+- `recurrence` is a new opt-in column. NULL or `one_time` means legacy behavior: `fulfill_obligation` deactivates the row. `monthly`, `quarterly`, `annual` and `biweekly` make `fulfill_obligation` roll `next_due_date` forward and keep the row active.
+- All four new columns are NULL for existing rows. Migration 0013 rollback drops them.
+
+Migration numbering note: migrations 0011 and 0012 are reserved for the parked inbox and Plaid branches and are already applied on the live database; 0013 is the next number on this branch.
 
 ## `event_log`
 Purpose:

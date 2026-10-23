@@ -368,10 +368,25 @@ def record_balance_snapshot(payload: dict) -> dict:
         return response
 
 
+_OBLIGATION_NEW_KEYS = ("recurrence", "day_of_month", "funding_account_id", "bucket")
+
+
+def _without_none(payload: dict, keys: tuple[str, ...]) -> dict:
+    """Drop optional keys whose value is None so legacy payloads keep their original hash."""
+    return {k: v for k, v in payload.items() if not (k in keys and v is None)}
+
+
 def create_or_update_obligation(payload: dict) -> dict:
     started = perf_counter()
-    input_hash = payload_hash(payload)
+    input_hash = payload_hash(_without_none(payload, _OBLIGATION_NEW_KEYS))
     with transaction() as conn:
+        funding_account_id = payload.get("funding_account_id")
+        if funding_account_id is not None:
+            found = conn.execute(
+                "SELECT 1 FROM accounts WHERE account_id=?", (funding_account_id,)
+            ).fetchone()
+            if not found:
+                raise InvariantError(f"unknown funding_account_id: {funding_account_id}")
         obligation_id, status, active = upsert_obligation(conn, payload)
         response = {
             "status": status,
@@ -395,7 +410,7 @@ def create_or_update_obligation(payload: dict) -> dict:
 
 def fulfill_obligation(payload: dict) -> dict:
     started = perf_counter()
-    input_hash = payload_hash(payload)
+    input_hash = payload_hash(_without_none(payload, ("expected_due_date",)))
     with transaction() as conn:
         result = _repo_fulfill_obligation(conn, payload)
         response = {

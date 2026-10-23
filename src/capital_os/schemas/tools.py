@@ -232,6 +232,10 @@ class RecordBalanceSnapshotOut(BaseModel):
     output_hash: str
 
 
+ObligationRecurrence = Literal["monthly", "biweekly", "quarterly", "annual", "one_time"]
+ObligationBucket = Literal["recurring", "debt", "discretionary", "savings", "annual"]
+
+
 class CreateOrUpdateObligationIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +249,10 @@ class CreateOrUpdateObligationIn(BaseModel):
     metadata: dict = Field(default_factory=dict)
     active: bool = True
     entity_id: str = DEFAULT_ENTITY_ID
+    recurrence: ObligationRecurrence | None = None
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
+    funding_account_id: str | None = None
+    bucket: ObligationBucket | None = None
     correlation_id: str
 
 
@@ -262,6 +270,7 @@ class FulfillObligationIn(BaseModel):
     obligation_id: str
     fulfilled_by_transaction_id: str | None = None
     fulfilled_at: datetime | None = None
+    expected_due_date: date | None = None
     correlation_id: str
 
 
@@ -270,6 +279,7 @@ class FulfillObligationOut(BaseModel):
     obligation_id: str
     fulfilled_by_transaction_id: str | None
     fulfilled_at: str | None
+    next_due_date: date | None = None
     correlation_id: str
     output_hash: str
 
@@ -817,6 +827,10 @@ class ObligationListItem(BaseModel):
     metadata: dict = Field(default_factory=dict)
     active: bool
     entity_id: str
+    recurrence: ObligationRecurrence | None = None
+    day_of_month: int | None = None
+    funding_account_id: str | None = None
+    bucket: ObligationBucket | None = None
     created_at: datetime
     updated_at: datetime
 

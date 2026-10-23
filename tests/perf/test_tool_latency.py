@@ -250,3 +250,45 @@ def test_duplicate_risk_proposal_path_p95_under_300ms_smoke(db_available, monkey
         assert p95 < 300
     finally:
         get_settings.cache_clear()
+
+
+@pytest.mark.performance
+def test_budget_tools_p95_under_300ms_200_items(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from capital_os.domain.budget.service import upsert_budget_item
+    from capital_os.tools.get_budget_summary import handle as get_budget_summary
+    from capital_os.tools.list_budget_items import handle as list_budget_items
+
+    with transaction() as conn:
+        account_id = create_account(conn, {"code": "1700", "name": "Budget Perf", "account_type": "asset"})
+    for i in range(200):
+        inflow = i % 10 == 0
+        upsert_budget_item(
+            {
+                "item_key": f"perf-{i:03d}",
+                "name": f"Perf {i}",
+                "direction": "inflow" if inflow else "outflow",
+                "amount": f"{10 + i}.25",
+                "cadence": "biweekly" if inflow else "monthly",
+                "day_of_month": None if inflow else (i % 28) + 1,
+                "anchor_date": "2026-10-29" if inflow else None,
+                "account_id": account_id,
+                "bucket": None if inflow else ["recurring", "debt", "annual", "discretionary", "savings"][i % 5],
+                "effective_date": "2026-10-23",
+                "correlation_id": f"perf-budget-seed-{i}",
+            }
+        )
+
+    for label, call in (
+        ("list", lambda i: list_budget_items({"limit": 200, "correlation_id": f"perf-bl-{i}"})),
+        ("summary", lambda i: get_budget_summary({"correlation_id": f"perf-bs-{i}"})),
+    ):
+        timings = []
+        for i in range(25):
+            start = time.perf_counter()
+            result = call(i)
+            timings.append((time.perf_counter() - start) * 1000)
+            assert result.output_hash
+        assert statistics.quantiles(timings, n=20)[-1] < 300, label

@@ -390,3 +390,51 @@ def test_recurring_obligation_fulfill_and_list_hashes_reproducible(db_available)
     assert list_a["obligations"][0]["recurrence"] == "monthly"
     assert list_a["obligations"][0]["next_due_date"] == "2026-12-03"
     assert list_a["output_hash"] == list_b["output_hash"]
+
+
+def test_budget_summary_and_list_hashes_reproducible_and_order_independent(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    import random
+
+    from capital_os.domain.budget.service import (
+        get_budget_summary,
+        list_budget_items,
+        upsert_budget_item,
+    )
+    from tests.support.budget_seed import create_budget_accounts, reference_items
+
+    acct = create_budget_accounts()
+    items = reference_items(acct)
+    shuffled = list(items)
+    random.Random(7).shuffle(shuffled)
+    for i, item in enumerate(shuffled):
+        upsert_budget_item({**item, "entity_id": "entity-default", "correlation_id": f"replay-seed-{i}"})
+
+    summary_a = get_budget_summary({"correlation_id": "replay-sum"})
+    summary_b = get_budget_summary({"correlation_id": "replay-sum"})
+    assert summary_a == summary_b
+    assert summary_a["output_hash"] == summary_b["output_hash"]
+
+    list_a = list_budget_items({"correlation_id": "replay-list", "limit": 500})
+    list_b = list_budget_items({"correlation_id": "replay-list", "limit": 500})
+    assert list_a["output_hash"] == list_b["output_hash"]
+    assert [i["item_key"] for i in list_a["items"]] == sorted(i["item_key"] for i in items)
+
+    # Seed the same budget into a second entity in a different order and with different
+    # item_keys/item_ids: per-entity summaries must hash identically (no ids or timestamps leak in).
+    with transaction() as conn:
+        conn.execute(
+            "INSERT INTO entities (entity_id, code, name, metadata) VALUES ('entity-b','B','Entity B','{}')"
+        )
+    reordered = list(items)
+    random.Random(99).shuffle(reordered)
+    for i, item in enumerate(reordered):
+        upsert_budget_item(
+            {**item, "item_key": f"b-{item['item_key']}", "entity_id": "entity-b", "correlation_id": f"replay-b-{i}"}
+        )
+    summary_default = get_budget_summary({"correlation_id": "replay-ent", "entity_id": "entity-default"})
+    summary_b = get_budget_summary({"correlation_id": "replay-ent", "entity_id": "entity-b"})
+    assert summary_default["item_count"] == summary_b["item_count"] == len(items)
+    assert summary_default["output_hash"] == summary_b["output_hash"]

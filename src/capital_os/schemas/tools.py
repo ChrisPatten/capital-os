@@ -1144,3 +1144,139 @@ class UpdateAccountProfileOut(BaseModel):
 
 
 TreeAccountNode.model_rebuild()
+
+
+BudgetDirection = Literal["inflow", "outflow"]
+BudgetCadence = Literal["monthly", "biweekly", "quarterly", "annual"]
+BudgetBucket = Literal["recurring", "debt", "discretionary", "savings", "annual"]
+
+
+class UpsertBudgetItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_key: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    direction: BudgetDirection
+    amount: Decimal = Field(ge=0)
+    cadence: BudgetCadence
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
+    anchor_date: date | None = None
+    account_id: str | None = None
+    bucket: BudgetBucket | None = None
+    effective_date: date
+    source: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    entity_id: str = DEFAULT_ENTITY_ID
+    active: bool = True
+    correlation_id: str
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> "UpsertBudgetItemIn":
+        if self.direction == "outflow" and self.bucket is None:
+            raise ValueError("bucket is required for outflow budget items")
+        if self.direction == "inflow" and self.bucket is not None:
+            raise ValueError("bucket must be omitted for inflow budget items")
+        if self.cadence == "monthly" and self.day_of_month is None:
+            raise ValueError("day_of_month is required for monthly budget items")
+        if self.cadence in ("biweekly", "quarterly", "annual") and self.anchor_date is None:
+            raise ValueError("anchor_date is required for biweekly, quarterly and annual budget items")
+        return self
+
+
+class UpsertBudgetItemOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["created", "versioned", "unchanged", "deactivated"]
+    item_id: str
+    item_key: str
+    active: bool
+    correlation_id: str
+    output_hash: str
+
+
+class ListBudgetItemsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=50, ge=1, le=500)
+    cursor: str | None = None
+    active_only: bool = True
+    direction: BudgetDirection | None = None
+    bucket: BudgetBucket | None = None
+    account_id: str | None = None
+    correlation_id: str
+
+    @field_validator("cursor")
+    @classmethod
+    def _validate_cursor(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        decode_cursor_payload(value, required_keys=("item_key", "effective_date", "item_id"))
+        return value
+
+
+class BudgetItemRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    item_key: str
+    name: str
+    direction: BudgetDirection
+    amount: Decimal
+    cadence: BudgetCadence
+    day_of_month: int | None = None
+    anchor_date: date | None = None
+    account_id: str | None = None
+    bucket: BudgetBucket | None = None
+    active: bool
+    effective_date: date
+    source: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    entity_id: str
+
+
+class ListBudgetItemsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[BudgetItemRow]
+    next_cursor: str | None = None
+    correlation_id: str
+    output_hash: str
+
+
+class GetBudgetSummaryIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_id: str | None = None
+    as_of_date: date | None = None
+    correlation_id: str
+
+
+class BudgetSummaryBucket(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    bucket: BudgetBucket
+    monthly_amount: Decimal
+    pct_of_take_home: Decimal
+
+
+class BudgetSummaryAccount(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    inflow_monthly: Decimal
+    outflow_monthly: Decimal
+    net_monthly: Decimal
+
+
+class GetBudgetSummaryOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    take_home_monthly: Decimal
+    untracked_inflows_monthly: Decimal
+    buckets: list[BudgetSummaryBucket]
+    total_outflows_monthly: Decimal
+    leftover_monthly: Decimal
+    accounts: list[BudgetSummaryAccount]
+    item_count: int
+    correlation_id: str
+    output_hash: str

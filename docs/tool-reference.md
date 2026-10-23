@@ -220,6 +220,37 @@ capital-os tool call record_transaction_bundle --json '{
 - Legacy payloads (none of the new fields) produce the same `input_hash` as before: null new keys are excluded from the hashed payload.
 - Logs event in same transaction.
 
+## `upsert_budget_item`
+- Handler: `src/capital_os/tools/upsert_budget_item.py`
+- Domain service: `src/capital_os/domain/budget/service.py::upsert_budget_item`
+- Input schema: `UpsertBudgetItemIn`; output schema: `UpsertBudgetItemOut`
+- Capability: `tools:write` (fail-closed write tool).
+
+### Behavior
+- Versioned upsert keyed by `item_key`. Fields: `name`, `direction` (`inflow|outflow`), `amount` (per occurrence, >= 0, normalized to 4dp half-even), `cadence` (`monthly|biweekly|quarterly|annual`), `day_of_month`, `anchor_date`, `account_id`, `bucket`, `effective_date` (required), `source`, `metadata`, `entity_id`, `active` (default true).
+- Validation (HTTP 422): outflow requires `bucket`; inflow forbids `bucket`; monthly requires `day_of_month`; biweekly/quarterly/annual require `anchor_date`. Unknown `account_id` fails with HTTP 400 and writes nothing. `account_id` null means untracked (for example a deposit into an account not in the ledger).
+- Status:
+  - `created`: no prior version.
+  - `unchanged`: an active version exists with identical content (including `effective_date`); nothing is written and the existing `item_id` is returned.
+  - `versioned`: content differs; the active version is deactivated and a new row inserted in the same transaction.
+  - `deactivated`: `active=false` switched off the current active version.
+- `active=false` with no active version returns `unchanged` (with the latest version's `item_id`); an `item_key` that never existed fails with HTTP 400.
+- Rows are never edited or deleted (a DB trigger rejects both); only `active` may go 1 -> 0.
+- Logs event in same transaction.
+
+## `list_budget_items`
+- Handler: `src/capital_os/tools/list_budget_items.py`
+- Input schema: `ListBudgetItemsIn`; output schema: `ListBudgetItemsOut`; capability `tools:read`.
+- Keyset pagination ordered by `(item_key, effective_date, item_id)`; `limit` default 50, max 500; opaque `cursor`.
+- Filters: `active_only` (default true), `direction`, `bucket`, `account_id`. Set `active_only=false` to see version history.
+- Rows carry content fields plus `item_id` and `active`; audit timestamps are excluded so `output_hash` is reproducible.
+
+## `get_budget_summary`
+- Handler: `src/capital_os/tools/get_budget_summary.py`
+- Input schema: `GetBudgetSummaryIn` (optional `entity_id`, optional `as_of_date`); output schema: `GetBudgetSummaryOut`; capability `tools:read`.
+- Uses active versions (excluding those with `effective_date > as_of_date` when given) and converts each to a monthly equivalent (monthly x1, biweekly x26/12, quarterly /3, annual /12) in full-precision Decimal; values are quantized to 4dp half-even only in the output.
+- Returns `take_home_monthly` (all inflows), `untracked_inflows_monthly` (inflows with no `account_id`), `buckets` (ordered recurring, debt, annual, discretionary, savings; `monthly_amount` and `pct_of_take_home` as a percent), `total_outflows_monthly`, `leftover_monthly` (= take-home - untracked - outflows), `accounts` (per `account_id`, sorted: `inflow_monthly`, `outflow_monthly`, `net_monthly`), `item_count`.
+
 ## `fulfill_obligation`
 - Handler: `src/capital_os/tools/fulfill_obligation.py`
 - Domain service: `src/capital_os/domain/ledger/service.py::fulfill_obligation`

@@ -101,6 +101,24 @@ Constraints:
 - Unique `(account_id, snapshot_date)`.
 - Supports upsert semantics in repository/service layer.
 
+## `budget_items`
+Purpose:
+- Budget as data (migration 0014): inflows (payroll, deposits) and outflows (bills, debt paydown, savings) used by `get_budget_summary`.
+
+Key fields:
+- `item_id TEXT PRIMARY KEY`; `item_key TEXT NOT NULL` (stable identity across versions)
+- `name`, `direction CHECK IN ('inflow','outflow')`, `amount NUMERIC CHECK >= 0` (per occurrence)
+- `cadence CHECK IN ('monthly','biweekly','quarterly','annual')`, `day_of_month` (1-31), `anchor_date`
+- `account_id TEXT NULL REFERENCES accounts` (funding account for outflows, destination for inflows; NULL = untracked)
+- `bucket NULL CHECK IN ('recurring','debt','discretionary','savings','annual')`; table CHECK: required for outflow, NULL for inflow
+- `active`, `effective_date`, `source`, `metadata`, `entity_id`, `created_at`, `updated_at`
+
+Constraints and versioning:
+- Partial unique index on `(item_key) WHERE active = 1`: one active version per key.
+- A change inserts a new row and deactivates the previous one in the same transaction; history stays queryable.
+- Trigger `budget_items_versioned_update_guard` rejects any UPDATE other than `active` 1 -> 0 (and `updated_at`); reactivation is rejected. A second trigger rejects DELETE.
+- Monthly equivalents: monthly x1, biweekly x26/12, quarterly /3, annual /12 (Decimal; quantized to 4dp half-even only at output).
+
 ## `obligations`
 Purpose:
 - Recurring or custom expected obligations used for planning context.

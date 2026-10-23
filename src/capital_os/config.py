@@ -31,6 +31,7 @@ DEFAULT_TOOL_CAPABILITIES = {
     "upsert_budget_item": "tools:write",
     "list_budget_items": "tools:read",
     "get_budget_summary": "tools:read",
+    "forecast_cash": "tools:read",
     "compute_capital_posture": "tools:read",
     "compute_consolidated_posture": "tools:read",
     "simulate_spend": "tools:read",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as _dt
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
@@ -1278,5 +1279,82 @@ class GetBudgetSummaryOut(BaseModel):
     leftover_monthly: Decimal
     accounts: list[BudgetSummaryAccount]
     item_count: int
+    correlation_id: str
+    output_hash: str
+
+
+class ForecastCashIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str = Field(min_length=1)
+    as_of_date: date
+    days: int = Field(ge=1, le=730)
+    starting_balance: Decimal | None = None
+    include_unposted: bool = False
+    threshold: Decimal | None = None
+    entity_id: str = DEFAULT_ENTITY_ID
+    correlation_id: str
+
+
+class ForecastStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: _dt.date
+    balance: Decimal
+    source: Literal["explicit", "snapshot"]
+    snapshot_date: _dt.date | None = None
+
+
+class ForecastEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: _dt.date
+    name: str
+    kind: Literal["budget_item", "obligation"]
+    source_id: str
+    direction: BudgetDirection
+    amount: Decimal
+    balance_after: Decimal
+
+
+class ForecastMonthlyMinimum(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    month: str
+    min_balance: Decimal
+    date: _dt.date | None = None
+    item: str | None = None
+
+
+class ForecastOverallMinimum(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    balance: Decimal
+    date: _dt.date | None = None
+    item: str | None = None
+
+
+class ForecastUnscheduledItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_id: str
+    name: str
+    reason: str
+
+
+class ForecastCashOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str
+    as_of_date: _dt.date
+    end_date: _dt.date
+    start: ForecastStart
+    unposted_events: list[ForecastEvent] | None = None
+    events: list[ForecastEvent]
+    monthly_minimums: list[ForecastMonthlyMinimum]
+    overall_minimum: ForecastOverallMinimum
+    threshold: Decimal | None = None
+    below_threshold: bool | None = None
+    unscheduled_items: list[ForecastUnscheduledItem]
     correlation_id: str
     output_hash: str

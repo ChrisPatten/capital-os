@@ -38,6 +38,7 @@ from capital_os.tools import (
     compute_consolidated_posture,
     create_account,
     create_or_update_obligation,
+    forecast_cash,
     fulfill_obligation,
     get_account_balances,
     get_account_tree,
@@ -112,6 +113,7 @@ TOOL_HANDLERS = {
     "upsert_budget_item": upsert_budget_item.handle,
     "list_budget_items": list_budget_items.handle,
     "get_budget_summary": get_budget_summary.handle,
+    "forecast_cash": forecast_cash.handle,
 }
 
 

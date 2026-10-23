@@ -438,3 +438,37 @@ def test_budget_summary_and_list_hashes_reproducible_and_order_independent(db_av
     summary_b = get_budget_summary({"correlation_id": "replay-ent", "entity_id": "entity-b"})
     assert summary_default["item_count"] == summary_b["item_count"] == len(items)
     assert summary_default["output_hash"] == summary_b["output_hash"]
+
+
+def test_forecast_cash_hash_reproducible_and_order_independent(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from datetime import date
+
+    from capital_os.domain.budget.service import upsert_budget_item
+    from capital_os.domain.forecast.service import forecast_cash
+    from tests.support.budget_seed import create_budget_accounts, reference_items
+
+    acct = create_budget_accounts()
+    items = reference_items(acct, citizens_payroll="2960.00")
+    random.Random(11).shuffle(items)
+    for i, item in enumerate(items):
+        upsert_budget_item({**item, "entity_id": "entity-default", "correlation_id": f"fc-seed-{i}"})
+
+    request = {
+        "account_id": acct["citizens"],
+        "as_of_date": date(2026, 10, 19),
+        "days": 163,
+        "starting_balance": Decimal("5116.31"),
+        "threshold": Decimal("200"),
+        "correlation_id": "fc-replay",
+    }
+    first = forecast_cash(dict(request))
+    second = forecast_cash(dict(request))
+    assert first == second
+    assert first["output_hash"] == second["output_hash"]
+    assert len(first["output_hash"]) == 64
+    # Event order is a pure function of (date, inflow-first, name, source id), not insertion order.
+    keys = [(e["date"], 0 if e["direction"] == "inflow" else 1, e["name"], e["source_id"]) for e in first["events"]]
+    assert keys == sorted(keys)

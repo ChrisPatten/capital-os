@@ -21,7 +21,7 @@ def create_budget_accounts() -> dict[str, str]:
     return ids
 
 
-def reference_items(acct: dict[str, str]) -> list[dict]:
+def reference_items(acct: dict[str, str], citizens_payroll: str = "2959.00") -> list[dict]:
     """(item_key, name, direction, amount, cadence, account, bucket) rows as upsert payloads."""
     items: list[dict] = []
 
@@ -31,30 +31,30 @@ def reference_items(acct: dict[str, str]) -> list[dict]:
                  anchor_date="2026-10-29", account_id=account, effective_date="2026-10-23")
         )
 
-    def outflow(key, name, amount, account, bucket="recurring", cadence="monthly"):
+    def outflow(key, name, amount, account, bucket="recurring", cadence="monthly", day=1):
         row = dict(item_key=key, name=name, direction="outflow", amount=amount, cadence=cadence,
                    account_id=account, bucket=bucket, effective_date="2026-10-23")
         if cadence == "monthly":
-            row["day_of_month"] = 1
+            row["day_of_month"] = day
         else:
             row["anchor_date"] = "2026-11-15"
         items.append(row)
 
-    inflow("pay-citizens", "Citizens payroll", "2959.00", acct["citizens"])
+    inflow("pay-citizens", "Citizens payroll", citizens_payroll, acct["citizens"])
     inflow("pay-sfcu", "SFCU payroll", "1341.75", acct["sfcu"])
     inflow("kate-deposit", "Kate deposit", "1511.00", None)
 
     c = acct["citizens"]
-    outflow("life-insurance", "Life insurance", "40.38", c)
-    outflow("mortgage", "Mortgage", "3127.46", c)
-    outflow("arbella", "Arbella", "276.00", c)
-    outflow("discover", "Discover paydown", "590.00", c, bucket="debt")
-    outflow("eversource-gas", "Eversource gas", "284.00", c)
-    outflow("fios", "Fios", "89.99", c)
-    outflow("firstmark", "Firstmark", "520.44", c)
-    outflow("apple-card-paydown", "Apple Card paydown", "500.00", c, bucket="debt")
-    outflow("highlander", "Highlander", "461.00", c)
-    outflow("verizon", "Verizon", "160.73", c)
+    outflow("life-insurance", "Life insurance", "40.38", c, day=1)
+    outflow("mortgage", "Mortgage", "3127.46", c, day=3)
+    outflow("arbella", "Arbella", "276.00", c, day=3)
+    outflow("discover", "Discover paydown", "590.00", c, bucket="debt", day=5)
+    outflow("eversource-gas", "Eversource gas", "284.00", c, day=5)
+    outflow("fios", "Fios", "89.99", c, day=12)
+    outflow("firstmark", "Firstmark", "520.44", c, day=18)
+    outflow("apple-card-paydown", "Apple Card paydown", "500.00", c, bucket="debt", day=24)
+    outflow("highlander", "Highlander", "461.00", c, day=26)
+    outflow("verizon", "Verizon", "160.73", c, day=28)
 
     s = acct["sfcu"]
     outflow("ohdeer", "OhDeer", "117.00", s)

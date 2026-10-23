@@ -292,3 +292,53 @@ def test_budget_tools_p95_under_300ms_200_items(db_available):
             timings.append((time.perf_counter() - start) * 1000)
             assert result.output_hash
         assert statistics.quantiles(timings, n=20)[-1] < 300, label
+
+
+@pytest.mark.performance
+def test_forecast_cash_p95_under_300ms_365_day_horizon(db_available):
+    if not db_available:
+        pytest.skip("database unavailable")
+
+    from datetime import date
+
+    from capital_os.domain.budget.service import upsert_budget_item
+    from capital_os.tools.forecast_cash import handle as forecast_cash
+    from tests.support.budget_seed import create_budget_accounts, reference_items
+
+    acct = create_budget_accounts()
+    for i, item in enumerate(reference_items(acct, citizens_payroll="2960.00")):
+        upsert_budget_item({**item, "entity_id": "entity-default", "correlation_id": f"perf-fc-seed-{i}"})
+    for i in range(100):
+        upsert_budget_item(
+            {
+                "item_key": f"perf-fc-{i:03d}",
+                "name": f"Perf FC {i}",
+                "direction": "outflow",
+                "amount": f"{5 + i}.10",
+                "cadence": ["monthly", "biweekly", "quarterly", "annual"][i % 4],
+                "day_of_month": (i % 28) + 1 if i % 4 == 0 else None,
+                "anchor_date": None if i % 4 == 0 else f"2026-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}",
+                "account_id": acct["citizens"],
+                "bucket": "recurring",
+                "effective_date": "2026-10-23",
+                "entity_id": "entity-default",
+                "correlation_id": f"perf-fc-extra-{i}",
+            }
+        )
+
+    timings = []
+    for i in range(25):
+        start = time.perf_counter()
+        result = forecast_cash(
+            {
+                "account_id": acct["citizens"],
+                "as_of_date": date(2026, 10, 19),
+                "days": 365,
+                "starting_balance": "5116.31",
+                "threshold": "200",
+                "correlation_id": f"perf-fc-{i}",
+            }
+        )
+        timings.append((time.perf_counter() - start) * 1000)
+        assert result.output_hash and result.events
+    assert statistics.quantiles(timings, n=20)[-1] < 300
